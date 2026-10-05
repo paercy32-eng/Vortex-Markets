@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import {
-  CloseIcon,
-  ChevronRightIcon,
-} from '@/components/icons';
+import { CloseIcon, ChevronRightIcon } from '@/components/icons';
+
+// ==========================================
+// RULES (must match server)
+// ==========================================
+const MIN_WITHDRAWAL = 4000;
+const WITHDRAWAL_FEE_RATE = 0.15;
 
 // ==========================================
 // TYPES
@@ -76,7 +79,6 @@ export default function ProfilePage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- Modals ---
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showBind, setShowBind] = useState(false);
@@ -124,7 +126,6 @@ export default function ProfilePage() {
     }
   }
 
-  // --- Loading state ---
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -143,12 +144,9 @@ export default function ProfilePage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Profile</h1>
-        <p className="text-muted text-sm">
-          Manage your account and wallet.
-        </p>
+        <p className="text-muted text-sm">Manage your account and wallet.</p>
       </div>
 
       {/* User card */}
@@ -230,7 +228,6 @@ export default function ProfilePage() {
         </a>
       </div>
 
-      {/* Logout */}
       <button
         onClick={handleLogout}
         className="w-full py-4 rounded-2xl bg-danger/10 text-danger font-semibold text-sm active:scale-[0.98] transition"
@@ -238,9 +235,7 @@ export default function ProfilePage() {
         Sign Out
       </button>
 
-      {/* ============================ */}
-      {/* MODALS                       */}
-      {/* ============================ */}
+      {/* Modals */}
       {showRecharge && (
         <RechargeModal
           onClose={() => setShowRecharge(false)}
@@ -424,10 +419,18 @@ function WithdrawModal({
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const numericAmount = Number(amount) || 0;
+  const fee = Math.round(numericAmount * WITHDRAWAL_FEE_RATE * 100) / 100;
+  const netAmount = Math.round((numericAmount - fee) * 100) / 100;
+
   async function submit() {
     const value = Number(amount);
     if (!value || value <= 0) {
       toast.error('Enter a valid amount');
+      return;
+    }
+    if (value < MIN_WITHDRAWAL) {
+      toast.error(`Minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} UGX`);
       return;
     }
     if (value > balance) {
@@ -483,13 +486,38 @@ function WithdrawModal({
         <input
           type="number"
           className="input mb-4"
-          placeholder="e.g. 20000"
+          placeholder={`Min ${MIN_WITHDRAWAL.toLocaleString()}`}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
 
+        {/* Fee breakdown */}
+        {numericAmount > 0 && (
+          <div className="card-flat mb-4">
+            <div className="row">
+              <span className="row-label">Amount</span>
+              <span className="row-value">
+                {numericAmount.toLocaleString()} UGX
+              </span>
+            </div>
+            <div className="row">
+              <span className="row-label">Fee (15%)</span>
+              <span className="row-value text-danger">
+                -{fee.toLocaleString()} UGX
+              </span>
+            </div>
+            <div className="row">
+              <span className="row-label">You receive</span>
+              <span className="row-value text-success">
+                {netAmount.toLocaleString()} UGX
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="modal-note mb-4">
-          Withdrawals are reviewed by admin before payment is sent.
+          Minimum withdrawal is {MIN_WITHDRAWAL.toLocaleString()} UGX. A 15%
+          fee applies. You must have an active module to withdraw.
         </div>
 
         <button
@@ -524,7 +552,6 @@ function BindModal({
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // --- Read-only view when already bound ---
   if (alreadyBound) {
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -631,7 +658,7 @@ function BindModal({
 }
 
 // ==========================================
-// HISTORY MODAL (shared for deposits/withdraws)
+// HISTORY MODAL
 // ==========================================
 function HistoryModal({
   title,
