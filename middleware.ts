@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyUserToken, USER_COOKIE_NAME } from '@/lib/jwt';
+import { USER_COOKIE_NAME } from '@/lib/jwt';
 
 // ==========================================
 // ROUTES
 // ==========================================
-// Public routes — accessible without login
 const PUBLIC_ROUTES = ['/login', '/register'];
 
 // ==========================================
@@ -18,19 +17,17 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    pathname.includes('.') // any file with extension (favicon.ico, etc.)
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // Read the user token
+  // Soft check — real verification happens in each API route
   const token = req.cookies.get(USER_COOKIE_NAME)?.value;
-  const payload = token ? verifyUserToken(token) : null;
-  const isLoggedIn = !!payload;
+  const isLoggedIn = !!token;
 
   const isPublicRoute = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
 
-  // --- Not logged in, trying to access a protected route ---
   if (!isLoggedIn && !isPublicRoute) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
@@ -38,7 +35,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // --- Logged in, trying to access login/register ---
   if (isLoggedIn && isPublicRoute) {
     const url = req.nextUrl.clone();
     url.pathname = '/';
@@ -51,19 +47,9 @@ export function middleware(req: NextRequest) {
 
 // ==========================================
 // MATCHER
-// Only run middleware on these paths.
 // ==========================================
 export const config = {
   matcher: [
-    /*
-     * Match all request paths EXCEPT:
-     * - /api/*          (API routes)
-     * - /_next/*        (Next.js internals)
-     * - /_static/*      (static assets)
-     * - /favicon.ico    (favicon)
-     * - /robots.txt     (robots)
-     * - /sitemap.xml    (sitemap)
-     */
     '/((?!api|_next|_static|favicon.ico|robots.txt|sitemap.xml).*)',
   ],
 };
