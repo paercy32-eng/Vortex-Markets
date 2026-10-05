@@ -7,7 +7,7 @@ export const fetchCache = 'force-no-store';
 
 // ==========================================
 // GET /api/products
-// Returns all active products.
+// Returns all products with earning details.
 // Public endpoint — no auth required.
 // ==========================================
 export async function GET() {
@@ -16,8 +16,11 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, category, created_at')
-      .order('created_at', { ascending: false });
+      .select(
+        'id, name, description, price, category, cycle_days, daily_return, group_label, created_at'
+      )
+      .order('cycle_days', { ascending: true })
+      .order('price', { ascending: true });
 
     if (error) {
       console.error('Products fetch error:', error);
@@ -27,12 +30,16 @@ export async function GET() {
       );
     }
 
+    const products = (data || []).map((p) => ({
+      ...p,
+      price: Number(p.price) || 0,
+      daily_return: Number(p.daily_return) || 0,
+      total_return: (Number(p.daily_return) || 0) * (p.cycle_days || 0),
+    }));
+
     return NextResponse.json({
       success: true,
-      products: (data || []).map((p) => ({
-        ...p,
-        price: Number(p.price) || 0,
-      })),
+      products,
     });
   } catch (err: any) {
     console.error('Products endpoint error:', err);
