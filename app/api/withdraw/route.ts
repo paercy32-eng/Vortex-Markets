@@ -7,9 +7,19 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 // ==========================================
+// WITHDRAWAL RULES
+// ==========================================
+const MIN_WITHDRAWAL = 4000;
+const WITHDRAWAL_FEE_RATE = 0.15; // 15%
+
+// ==========================================
 // POST /api/withdraw
 // Creates a withdrawal request.
-// Balance is NOT deducted here — admin approval does that.
+// Rules:
+//  - User must have at least one active module
+//  - Minimum withdrawal: 4,000 UGX
+//  - 15% fee is deducted from the amount
+//  - Balance is NOT deducted here — admin approval does that
 // ==========================================
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Must be bound before withdrawing ---
+    // --- Must be bound ---
     if (!user.is_bound || !user.bound_phone || !user.bound_full_name) {
       return NextResponse.json(
         { error: 'Please bind your account first' },
@@ -42,6 +52,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (amount < MIN_WITHDRAWAL) {
+      return NextResponse.json(
+        { error: `Minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} UGX` },
+        { status: 400 }
+      );
+    }
+
     if (amount > user.balance) {
       return NextResponse.json(
         { error: 'Insufficient balance' },
@@ -50,6 +67,25 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getServiceClient();
+
+    // --- Must have at least one active module ---
+    const { data: activeModule } = await supabase
+      .from('user_modules')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeModule) {
+      return NextResponse.json(
+        {
+          error:
+            'You need an active module before you can withdraw. Purchase a module first.',
+        },
+        { status: 400 }
+      );
+    }
 
     // --- Block if user already has a pending withdrawal ---
     const { data: existingPending } = await supabase
@@ -66,6 +102,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- Compute fee and net amount ---
+    const fee = Math.round(amount * WITHDRAWAL_FEE_RATE * 100) / 100;
+    const netAmount = Math.round((amount - fee) * 100) / 100;
+
     // --- Create the withdrawal request ---
     const { data: withdrawal, error } = await supabase
       .from('withdrawals')
@@ -76,7 +116,9 @@ export async function POST(req: NextRequest) {
         recipient_name: user.bound_full_name,
         status: 'pending',
       })
-      .select('id, amount, recipient_phone, recipient_name, status, created_at')
+      .select(
+        'id, amount, recipient_phone, recipient_name, status, created_at'
+      )
       .single();
 
     if (error || !withdrawal) {
@@ -93,6 +135,8 @@ export async function POST(req: NextRequest) {
       withdrawal: {
         ...withdrawal,
         amount: Number(withdrawal.amount) || 0,
+        fee,
+        net_amount: netAmount,
       },
     });
   } catch (err: any) {
