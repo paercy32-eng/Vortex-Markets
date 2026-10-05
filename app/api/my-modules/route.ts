@@ -8,7 +8,8 @@ export const fetchCache = 'force-no-store';
 
 // ==========================================
 // GET /api/my-modules
-// Returns the current user's purchased products.
+// Returns the current user's purchased modules
+// with cycle progress and earnings.
 // ==========================================
 export async function GET() {
   try {
@@ -23,10 +24,11 @@ export async function GET() {
 
     const supabase = getServiceClient();
 
-    // --- Fetch user's orders ---
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select('id, product_id, amount, status, created_at')
+    const { data, error } = await supabase
+      .from('user_modules')
+      .select(
+        'id, product_id, product_name, price_paid, cycle_days, daily_return, total_creditable, days_credited, total_credited, started_at, expires_at, last_credited_at, status, created_at'
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -38,49 +40,33 @@ export async function GET() {
       );
     }
 
-    const rows = orders || [];
+    const modules = (data || []).map((m) => {
+      const cycleDays = Number(m.cycle_days) || 0;
+      const daysCredited = Number(m.days_credited) || 0;
+      const progress =
+        cycleDays > 0 ? Math.min(100, Math.round((daysCredited / cycleDays) * 100)) : 0;
 
-    // --- Fetch the products referenced by the orders ---
-    const productIds = rows.map((o) => o.product_id);
-
-    let productsMap: Record<string, { name: string; description: string | null; category: string }> = {};
-
-    if (productIds.length > 0) {
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('id, name, description, category')
-        .in('id', productIds);
-
-      if (productsData) {
-        productsMap = productsData.reduce((acc, p) => {
-          acc[p.id] = {
-            name: p.name,
-            description: p.description,
-            category: p.category,
-          };
-          return acc;
-        }, {} as Record<string, { name: string; description: string | null; category: string }>);
-      }
-    }
-
-    // --- Merge orders with product info ---
-    const merged = rows.map((o) => {
-      const product = productsMap[o.product_id];
       return {
-        id: o.id,
-        product_id: o.product_id,
-        product_name: product?.name || 'Unknown product',
-        product_description: product?.description || null,
-        category: product?.category || '',
-        amount: Number(o.amount) || 0,
-        status: o.status,
-        purchased_at: o.created_at,
+        id: m.id,
+        product_id: m.product_id,
+        product_name: m.product_name,
+        price_paid: Number(m.price_paid) || 0,
+        cycle_days: cycleDays,
+        daily_return: Number(m.daily_return) || 0,
+        total_creditable: Number(m.total_creditable) || 0,
+        days_credited: daysCredited,
+        total_credited: Number(m.total_credited) || 0,
+        started_at: m.started_at,
+        expires_at: m.expires_at,
+        last_credited_at: m.last_credited_at,
+        status: m.status,
+        progress,
       };
     });
 
     return NextResponse.json({
       success: true,
-      modules: merged,
+      modules,
     });
   } catch (err: any) {
     console.error('My modules endpoint error:', err);
