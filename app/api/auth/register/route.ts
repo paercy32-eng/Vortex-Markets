@@ -12,6 +12,11 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 // ==========================================
+// WELCOME BONUS
+// ==========================================
+const WELCOME_BONUS = 3000;
+
+// ==========================================
 // HELPERS
 // ==========================================
 function normalizePhone(input: string): string {
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
       newReferralCode = generateReferralCode();
     }
 
-    // --- Insert user ---
+    // --- Insert user with welcome bonus ---
     const { data: newUser, error: insertErr } = await supabase
       .from('users')
       .insert({
@@ -139,7 +144,7 @@ export async function POST(req: NextRequest) {
         password_hash,
         referral_code: newReferralCode,
         referred_by: referrerId,
-        balance: 0,
+        balance: WELCOME_BONUS,
       })
       .select('id, name, phone, referral_code')
       .single();
@@ -152,9 +157,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- Log the welcome bonus transaction ---
+    await supabase.from('transactions').insert({
+      user_id: newUser.id,
+      type: 'welcome_bonus',
+      amount: WELCOME_BONUS,
+      status: 'completed',
+      meta: { source: 'registration' },
+    });
+
     // --- Build referral chain (Level 1, 2, 3) ---
     if (referrerId) {
-      // Level 1: direct referrer
       await supabase.from('referrals').insert({
         referrer_id: referrerId,
         referred_id: newUser.id,
@@ -162,7 +175,6 @@ export async function POST(req: NextRequest) {
         earnings: 0,
       });
 
-      // Level 2
       const { data: lvl1User } = await supabase
         .from('users')
         .select('referred_by')
@@ -177,7 +189,6 @@ export async function POST(req: NextRequest) {
           earnings: 0,
         });
 
-        // Level 3
         const { data: lvl2User } = await supabase
           .from('users')
           .select('referred_by')
@@ -208,6 +219,7 @@ export async function POST(req: NextRequest) {
         name: newUser.name,
         phone: newUser.phone,
         referral_code: newUser.referral_code,
+        balance: WELCOME_BONUS,
       },
     });
 
@@ -221,4 +233,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+        }
