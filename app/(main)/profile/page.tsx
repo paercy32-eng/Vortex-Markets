@@ -1,0 +1,670 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import {
+  CloseIcon,
+  ChevronRightIcon,
+} from '@/components/icons';
+
+// ==========================================
+// TYPES
+// ==========================================
+interface ProfileUser {
+  id: string;
+  name: string;
+  phone: string;
+  balance: number;
+  is_bound: boolean;
+  bound_phone: string | null;
+  bound_full_name: string | null;
+}
+
+interface Deposit {
+  id: string;
+  amount: number;
+  status: string;
+  reference: string | null;
+  created_at: string;
+}
+
+interface Withdrawal {
+  id: string;
+  amount: number;
+  recipient_phone: string;
+  recipient_name: string;
+  status: string;
+  created_at: string;
+}
+
+// ==========================================
+// HELPERS
+// ==========================================
+function statusPillClass(status: string): string {
+  const s = (status || '').toLowerCase();
+  if (s === 'completed' || s === 'approved' || s === 'successful')
+    return 'pill-success';
+  if (s === 'pending') return 'pill-warning';
+  if (s === 'rejected' || s === 'failed') return 'pill-danger';
+  return 'pill-muted';
+}
+
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
+// ==========================================
+// PAGE
+// ==========================================
+export default function ProfilePage() {
+  const router = useRouter();
+
+  const [user, setUser] = useState<ProfileUser | null>(null);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- Modals ---
+  const [showRecharge, setShowRecharge] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [showBind, setShowBind] = useState(false);
+  const [showDepositHistory, setShowDepositHistory] = useState(false);
+  const [showWithdrawHistory, setShowWithdrawHistory] = useState(false);
+
+  async function loadProfile() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/profile?t=' + Date.now(), {
+        cache: 'no-store',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Could not load profile');
+        setLoading(false);
+        return;
+      }
+
+      setUser(data.user);
+      setDeposits(data.deposits || []);
+      setWithdrawals(data.withdrawals || []);
+      setLoading(false);
+    } catch (err) {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout?t=' + Date.now(), {
+        method: 'POST',
+        cache: 'no-store',
+      });
+      router.replace('/login');
+      router.refresh();
+    } catch {
+      toast.error('Could not log out');
+    }
+  }
+
+  // --- Loading state ---
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin-slow" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="card text-center py-12">
+        <p className="text-muted text-sm">Could not load profile.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white mb-1">Profile</h1>
+        <p className="text-muted text-sm">
+          Manage your account and wallet.
+        </p>
+      </div>
+
+      {/* User card */}
+      <div className="card mb-4">
+        <p className="text-white font-semibold text-base">{user.name}</p>
+        <p className="text-muted text-sm mt-0.5">{user.phone}</p>
+        <p className="text-muted text-xs mt-1">
+          {user.is_bound
+            ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
+            : 'Account not bound'}
+        </p>
+      </div>
+
+      {/* Balance card */}
+      <div className="card mb-4">
+        <p className="text-muted text-xs uppercase tracking-wide mb-1">
+          Balance
+        </p>
+        <p className="text-white font-bold text-3xl">
+          {user.balance.toLocaleString()}{' '}
+          <span className="text-lg">UGX</span>
+        </p>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <button
+            onClick={() => setShowRecharge(true)}
+            className="btn-primary text-sm py-3"
+          >
+            Recharge
+          </button>
+          <button
+            onClick={() => {
+              if (!user.is_bound) {
+                toast.error('Bind your account first');
+                setShowBind(true);
+                return;
+              }
+              setShowWithdraw(true);
+            }}
+            className="btn-secondary text-sm py-3"
+          >
+            Withdraw
+          </button>
+        </div>
+      </div>
+
+      {/* Menu list */}
+      <div className="card mb-4 p-0">
+        <button
+          onClick={() => setShowDepositHistory(true)}
+          className="row w-full px-4"
+        >
+          <span className="row-label">Deposit History</span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </button>
+        <button
+          onClick={() => setShowWithdrawHistory(true)}
+          className="row w-full px-4"
+        >
+          <span className="row-label">Withdraw History</span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </button>
+        <button
+          onClick={() => setShowBind(true)}
+          className="row w-full px-4"
+        >
+          <span className="row-label">
+            {user.is_bound ? 'Bound Account' : 'Bind Account'}
+          </span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </button>
+        <a
+          href="https://t.me/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="row w-full px-4"
+        >
+          <span className="row-label">Join Telegram</span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </a>
+      </div>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="w-full py-4 rounded-2xl bg-danger/10 text-danger font-semibold text-sm active:scale-[0.98] transition"
+      >
+        Sign Out
+      </button>
+
+      {/* ============================ */}
+      {/* MODALS                       */}
+      {/* ============================ */}
+      {showRecharge && (
+        <RechargeModal
+          onClose={() => setShowRecharge(false)}
+          onSuccess={() => {
+            setShowRecharge(false);
+            loadProfile();
+          }}
+        />
+      )}
+
+      {showWithdraw && user && (
+        <WithdrawModal
+          balance={user.balance}
+          onClose={() => setShowWithdraw(false)}
+          onSuccess={() => {
+            setShowWithdraw(false);
+            loadProfile();
+          }}
+        />
+      )}
+
+      {showBind && (
+        <BindModal
+          alreadyBound={user.is_bound}
+          boundPhone={user.bound_phone}
+          boundName={user.bound_full_name}
+          onClose={() => setShowBind(false)}
+          onSuccess={() => {
+            setShowBind(false);
+            loadProfile();
+          }}
+        />
+      )}
+
+      {showDepositHistory && (
+        <HistoryModal
+          title="Deposit History"
+          onClose={() => setShowDepositHistory(false)}
+          empty={deposits.length === 0}
+        >
+          {deposits.map((d) => (
+            <div key={d.id} className="card mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white font-semibold text-sm">
+                  {d.amount.toLocaleString()} UGX
+                </span>
+                <span className={statusPillClass(d.status)}>
+                  {d.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-muted text-xs">{formatDate(d.created_at)}</p>
+            </div>
+          ))}
+        </HistoryModal>
+      )}
+
+      {showWithdrawHistory && (
+        <HistoryModal
+          title="Withdraw History"
+          onClose={() => setShowWithdrawHistory(false)}
+          empty={withdrawals.length === 0}
+        >
+          {withdrawals.map((w) => (
+            <div key={w.id} className="card mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white font-semibold text-sm">
+                  {w.amount.toLocaleString()} UGX
+                </span>
+                <span className={statusPillClass(w.status)}>
+                  {w.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-muted text-xs">
+                To: {w.recipient_name} · {w.recipient_phone}
+              </p>
+              <p className="text-muted text-xs mt-1">
+                {formatDate(w.created_at)}
+              </p>
+            </div>
+          ))}
+        </HistoryModal>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// RECHARGE MODAL
+// ==========================================
+function RechargeModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    const value = Number(amount);
+    if (!value || value <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/recharge?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ amount: value }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Recharge failed');
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data.message || 'Recharge request created');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Recharge</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <label className="input-label">Amount (UGX)</label>
+        <input
+          type="number"
+          className="input mb-4"
+          placeholder="e.g. 50000"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+
+        <div className="modal-note mb-4">
+          You will receive a mobile money prompt to approve this deposit.
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Sending prompt...' : 'Recharge'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// WITHDRAW MODAL
+// ==========================================
+function WithdrawModal({
+  balance,
+  onClose,
+  onSuccess,
+}: {
+  balance: number;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    const value = Number(amount);
+    if (!value || value <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    if (value > balance) {
+      toast.error('Insufficient balance');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/withdraw?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ amount: value }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Withdraw failed');
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data.message || 'Withdrawal request submitted');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Withdraw</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="card-flat mb-4">
+          <p className="text-muted text-xs uppercase mb-1">Available</p>
+          <p className="text-white font-bold text-xl">
+            {balance.toLocaleString()} UGX
+          </p>
+        </div>
+
+        <label className="input-label">Amount (UGX)</label>
+        <input
+          type="number"
+          className="input mb-4"
+          placeholder="e.g. 20000"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+
+        <div className="modal-note mb-4">
+          Withdrawals are reviewed by admin before payment is sent.
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Submitting...' : 'Request Withdrawal'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// BIND MODAL
+// ==========================================
+function BindModal({
+  alreadyBound,
+  boundPhone,
+  boundName,
+  onClose,
+  onSuccess,
+}: {
+  alreadyBound: boolean;
+  boundPhone: string | null;
+  boundName: string | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [phone, setPhone] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // --- Read-only view when already bound ---
+  if (alreadyBound) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+          className="modal-content animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="modal-title mb-0">Bound Account</h3>
+            <button onClick={onClose} className="text-muted p-1">
+              <CloseIcon size={20} />
+            </button>
+          </div>
+          <div className="card-flat mb-2">
+            <p className="text-muted text-xs uppercase mb-1">Full Name</p>
+            <p className="text-white font-medium">{boundName || '-'}</p>
+          </div>
+          <div className="card-flat mb-4">
+            <p className="text-muted text-xs uppercase mb-1">Phone</p>
+            <p className="text-white font-medium">{boundPhone || '-'}</p>
+          </div>
+          <div className="modal-note">
+            To change these details, please contact support.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  async function submit() {
+    if (!phone || !fullName) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/profile/bind?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ phone, fullName }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Could not bind');
+        setLoading(false);
+        return;
+      }
+
+      toast.success('Account bound');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Bind Account</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="modal-note mb-4">
+          These details are used for withdrawals. They can only be set once.
+        </div>
+
+        <label className="input-label">Full Registered Name</label>
+        <input
+          type="text"
+          className="input mb-4"
+          placeholder="e.g. John Doe"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+
+        <label className="input-label">Mobile Money Number</label>
+        <input
+          type="tel"
+          className="input mb-4"
+          placeholder="0700123456"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Binding...' : 'Bind Account'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// HISTORY MODAL (shared for deposits/withdraws)
+// ==========================================
+function HistoryModal({
+  title,
+  onClose,
+  empty,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  empty: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">{title}</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        {empty ? (
+          <div className="text-center py-10">
+            <p className="text-muted text-sm">No records yet.</p>
+          </div>
+        ) : (
+          <div>{children}</div>
+        )}
+      </div>
+    </div>
+  );
+}
