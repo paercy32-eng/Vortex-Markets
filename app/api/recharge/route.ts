@@ -7,7 +7,7 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 // ==========================================
-// HELPERS (same as auth)
+// HELPERS
 // ==========================================
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
@@ -24,19 +24,16 @@ function isValidPhone(phone: string): boolean {
 // POST /api/recharge
 // Body: { amount, phone }
 //
-// Creates a pending deposit request.
-// Marzpay integration will be wired here in the next phase.
-// For now, this just records the intent with the phone.
+// 1. Creates a pending deposit row
+// 2. Calls Marzpay to send a PIN prompt to the phone
+// 3. Returns success
 // ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -45,10 +42,7 @@ export async function POST(req: NextRequest) {
 
     // --- Validate amount ---
     if (!amount || isNaN(amount) || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Enter a valid amount' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Enter a valid amount' }, { status: 400 });
     }
 
     // --- Validate phone ---
@@ -98,18 +92,72 @@ export async function POST(req: NextRequest) {
     }
 
     // ==========================================
-    // TODO: Marzpay integration
-    // Here we'll call Marzpay's API to initiate a
-    // mobile money collection prompt to the user's phone.
-    // The response will include a Marzpay transaction ID
-    // that we store in the payment's `reference`.
-    //
-    // For now, we just record the intent and return.
+    // Marzpay integration
     // ==========================================
+    const marzpayKey = process.env.MARZPAY_API_KEY;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || 'https://vortex-markets.vercel.app';
 
+    if (!marzpayKey) {
+      console.error('Missing MARZPAY_API_KEY');
+      // Mark the payment as failed so the user isn't left waiting
+      await supabase
+        .from('payments')
+        .update({ status: 'failed' })
+        .eq('id', payment.id);
+
+      return NextResponse.json(
+        { error: 'Payment gateway not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Call Marzpay collect endpoint
+    // NOTE: Adjust the URL + body fields to match Marzpay's actual API docs
+    const marzpayRes = await fetch(
+      'https://wallet.wearemarz.com/api/v1/collect-money',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${marzpayKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          phone_number: phone,
+          customer_name: user.name || 'Vortex User',
+          reference,
+          callback_url: `${appUrl}/api/webhooks/marzpay`,
+          description: `Vortex Markets deposit for ${user.name || 'user'}`,
+        }),
+      }
+    );
+
+    const marzpayData = await marzpayRes.json().catch(() => ({}));
+    console.log('Marzpay collect response:', marzpayData);
+
+    if (!marzpayRes.ok || marzpayData?.success === false) {
+      console.error('Marzpay collect failed:', marzpayData);
+      await supabase
+        .from('payments')
+        .update({ status: 'failed' })
+        .eq('id', payment.id);
+
+      return NextResponse.json(
+        {
+          error:
+            marzpayData?.message ||
+            marzpayData?.error ||
+            'Payment request failed',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Success — Marzpay sent the prompt
     return NextResponse.json({
       success: true,
-      message: 'Recharge request created. A prompt will be sent to your phone.',
+      message: 'A PIN prompt was sent to your phone.',
       payment: {
         ...payment,
         amount: Number(payment.amount) || 0,
@@ -118,9 +166,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('Recharge endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
