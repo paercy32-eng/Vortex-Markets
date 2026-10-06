@@ -82,6 +82,7 @@ export default function ProfilePage() {
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showBind, setShowBind] = useState(false);
+  const [showGift, setShowGift] = useState(false);
   const [showDepositHistory, setShowDepositHistory] = useState(false);
   const [showWithdrawHistory, setShowWithdrawHistory] = useState(false);
 
@@ -195,6 +196,13 @@ export default function ProfilePage() {
       {/* Menu list */}
       <div className="card mb-4 p-0">
         <button
+          onClick={() => setShowGift(true)}
+          className="row w-full px-4"
+        >
+          <span className="row-label">Redeem Gift Code</span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </button>
+        <button
           onClick={() => setShowDepositHistory(true)}
           className="row w-full px-4"
         >
@@ -270,6 +278,16 @@ export default function ProfilePage() {
         />
       )}
 
+      {showGift && (
+        <GiftCardModal
+          onClose={() => setShowGift(false)}
+          onSuccess={() => {
+            setShowGift(false);
+            loadProfile();
+          }}
+        />
+      )}
+
       {showDepositHistory && (
         <HistoryModal
           title="Deposit History"
@@ -323,6 +341,90 @@ export default function ProfilePage() {
 }
 
 // ==========================================
+// GIFT CARD MODAL
+// ==========================================
+function GiftCardModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    const clean = code.trim().toUpperCase();
+    if (!clean) {
+      toast.error('Enter a gift card code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/gift-cards/redeem?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ code: clean }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Could not redeem');
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data.message || 'Gift card redeemed');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Redeem Gift Code</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="modal-note mb-4">
+          Enter the gift card code you received. The full value will be
+          credited to your balance immediately.
+        </div>
+
+        <label className="input-label">Gift Card Code</label>
+        <input
+          type="text"
+          className="input mb-4 uppercase font-mono"
+          placeholder="VRTX-GIFT-XXXXXX"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          autoComplete="off"
+        />
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Redeeming...' : 'Redeem'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // RECHARGE MODAL
 // ==========================================
 function RechargeModal({
@@ -333,12 +435,17 @@ function RechargeModal({
   onSuccess: () => void;
 }) {
   const [amount, setAmount] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function submit() {
     const value = Number(amount);
     if (!value || value <= 0) {
       toast.error('Enter a valid amount');
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error('Enter your mobile money number');
       return;
     }
 
@@ -348,7 +455,7 @@ function RechargeModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ amount: value }),
+        body: JSON.stringify({ amount: value, phone: phone.trim() }),
       });
       const data = await res.json();
 
@@ -388,8 +495,19 @@ function RechargeModal({
           onChange={(e) => setAmount(e.target.value)}
         />
 
+        <label className="input-label">Mobile Money Number</label>
+        <input
+          type="tel"
+          className="input mb-4"
+          placeholder="0700123456"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          inputMode="tel"
+        />
+
         <div className="modal-note mb-4">
-          You will receive a mobile money prompt to approve this deposit.
+          A mobile money prompt will be sent to your phone to approve the
+          deposit.
         </div>
 
         <button
@@ -491,7 +609,6 @@ function WithdrawModal({
           onChange={(e) => setAmount(e.target.value)}
         />
 
-        {/* Fee breakdown */}
         {numericAmount > 0 && (
           <div className="card-flat mb-4">
             <div className="row">
@@ -694,4 +811,4 @@ function HistoryModal({
       </div>
     </div>
   );
-}
+    }
