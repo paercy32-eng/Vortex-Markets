@@ -11,9 +11,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// HELPERS (must match register route)
-// ==========================================
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -25,25 +22,32 @@ function isValidPhone(phone: string): boolean {
   return /^2567\d{8}$/.test(phone);
 }
 
-// ==========================================
-// POST /api/auth/login
-// ==========================================
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { phone: rawPhone, password } = body || {};
+  const contentType = req.headers.get('content-type') || '';
+  const isForm = contentType.includes('form');
 
-    // --- Validate inputs ---
-    if (!rawPhone || typeof rawPhone !== 'string') {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      );
+  try {
+    let rawPhone = '';
+    let password = '';
+
+    if (isForm) {
+      const formData = await req.formData();
+      rawPhone = String(formData.get('phone') || '');
+      password = String(formData.get('password') || '');
+    } else {
+      const body = await req.json();
+      rawPhone = body.phone;
+      password = body.password;
     }
 
-    if (!password || typeof password !== 'string') {
+    if (!rawPhone || !password) {
+      if (isForm) {
+        return NextResponse.redirect(
+          new URL('/login?error=' + encodeURIComponent('Enter phone and password'), req.url)
+        );
+      }
       return NextResponse.json(
-        { error: 'Password is required' },
+        { error: 'Phone and password required' },
         { status: 400 }
       );
     }
@@ -51,53 +55,65 @@ export async function POST(req: NextRequest) {
     const phone = normalizePhone(rawPhone);
 
     if (!isValidPhone(phone)) {
+      if (isForm) {
+        return NextResponse.redirect(
+          new URL('/login?error=' + encodeURIComponent('Invalid phone number'), req.url)
+        );
+      }
       return NextResponse.json(
-        { error: 'Invalid phone number format' },
+        { error: 'Invalid phone number' },
         { status: 400 }
       );
     }
 
     const supabase = getServiceClient();
 
-    // --- Find user by phone ---
-    const { data: user, error } = await supabase
+    const { data: user } = await supabase
       .from('users')
       .select('id, name, phone, password_hash, referral_code, balance')
       .eq('phone', phone)
       .maybeSingle();
 
-    if (error) {
-      console.error('Login lookup error:', error);
-      return NextResponse.json(
-        { error: 'Something went wrong. Please try again.' },
-        { status: 500 }
-      );
-    }
-
-    // --- Use a generic message for both cases (prevents user enumeration) ---
     if (!user) {
+      if (isForm) {
+        return NextResponse.redirect(
+          new URL('/login?error=' + encodeURIComponent('Invalid phone or password'), req.url)
+        );
+      }
       return NextResponse.json(
         { error: 'Invalid phone number or password' },
         { status: 401 }
       );
     }
 
-    // --- Verify password ---
     const passwordOk = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordOk) {
+      if (isForm) {
+        return NextResponse.redirect(
+          new URL('/login?error=' + encodeURIComponent('Invalid phone or password'), req.url)
+        );
+      }
       return NextResponse.json(
         { error: 'Invalid phone number or password' },
         { status: 401 }
       );
     }
 
-    // --- Sign JWT and set cookie ---
-    const token = signUserToken({
-      userId: user.id,
-      phone: user.phone,
-    });
+    const token = signUserToken({ userId: user.id, phone: user.phone });
 
+    // ==========================================
+    // FORM SUBMISSION (browser) → redirect
+    // ==========================================
+    if (isForm) {
+      const res = NextResponse.redirect(new URL('/modules', req.url));
+      res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
+      return res;
+    }
+
+    // ==========================================
+    // JSON SUBMISSION (API clients)
+    // ==========================================
     const res = NextResponse.json({
       success: true,
       user: {
@@ -110,13 +126,14 @@ export async function POST(req: NextRequest) {
     });
 
     res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
-
     return res;
   } catch (err: any) {
     console.error('Login error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong. Please try again.' },
-      { status: 500 }
-    );
+    if (isForm) {
+      return NextResponse.redirect(
+        new URL('/login?error=' + encodeURIComponent('Something went wrong'), req.url)
+      );
+    }
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
