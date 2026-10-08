@@ -11,14 +11,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// WELCOME BONUS
-// ==========================================
 const WELCOME_BONUS = 3000;
 
-// ==========================================
-// HELPERS
-// ==========================================
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -39,61 +33,74 @@ function generateReferralCode(): string {
   return `VRTX-${code}`;
 }
 
-// ==========================================
-// POST /api/auth/register
-// ==========================================
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const {
-      name,
-      phone: rawPhone,
-      password,
-      confirmPassword,
-      referralCode,
-    } = body || {};
+  const contentType = req.headers.get('content-type') || '';
+  const isForm = contentType.includes('form');
 
-    // --- Validate inputs ---
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-      return NextResponse.json(
-        { error: 'Please enter your full name' },
-        { status: 400 }
-      );
+  function failRedirect(msg: string) {
+    return NextResponse.redirect(
+      new URL('/register?error=' + encodeURIComponent(msg), req.url)
+    );
+  }
+
+  try {
+    let name = '';
+    let rawPhone = '';
+    let password = '';
+    let confirmPassword = '';
+    let referralCode = '';
+
+    if (isForm) {
+      const formData = await req.formData();
+      name = String(formData.get('name') || '');
+      rawPhone = String(formData.get('phone') || '');
+      password = String(formData.get('password') || '');
+      confirmPassword = String(formData.get('confirmPassword') || '');
+      referralCode = String(formData.get('referralCode') || '');
+    } else {
+      const body = await req.json();
+      name = body.name;
+      rawPhone = body.phone;
+      password = body.password;
+      confirmPassword = body.confirmPassword;
+      referralCode = body.referralCode || '';
     }
 
-    if (!rawPhone || typeof rawPhone !== 'string') {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      );
+    // --- Validate ---
+    if (!name || name.trim().length < 2) {
+      return isForm
+        ? failRedirect('Please enter your full name')
+        : NextResponse.json({ error: 'Please enter your full name' }, { status: 400 });
+    }
+
+    if (!rawPhone) {
+      return isForm
+        ? failRedirect('Phone number is required')
+        : NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
     const phone = normalizePhone(rawPhone);
 
     if (!isValidPhone(phone)) {
-      return NextResponse.json(
-        { error: 'Enter a valid Ugandan phone number (e.g. 0700123456)' },
-        { status: 400 }
-      );
+      return isForm
+        ? failRedirect('Enter a valid Ugandan phone number')
+        : NextResponse.json({ error: 'Enter a valid Ugandan phone number' }, { status: 400 });
     }
 
-    if (!password || typeof password !== 'string' || password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
+    if (!password || password.length < 6) {
+      return isForm
+        ? failRedirect('Password must be at least 6 characters')
+        : NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
     if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: 'Passwords do not match' },
-        { status: 400 }
-      );
+      return isForm
+        ? failRedirect('Passwords do not match')
+        : NextResponse.json({ error: 'Passwords do not match' }, { status: 400 });
     }
 
     const supabase = getServiceClient();
 
-    // --- Check if phone already registered ---
     const { data: existing } = await supabase
       .from('users')
       .select('id')
@@ -101,13 +108,11 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'This phone number is already registered' },
-        { status: 409 }
-      );
+      return isForm
+        ? failRedirect('This phone number is already registered')
+        : NextResponse.json({ error: 'This phone number is already registered' }, { status: 409 });
     }
 
-    // --- Resolve referrer (if referral code supplied) ---
     let referrerId: string | null = null;
     if (referralCode && typeof referralCode === 'string') {
       const cleanCode = referralCode.trim().toUpperCase();
@@ -116,14 +121,11 @@ export async function POST(req: NextRequest) {
         .select('id')
         .eq('referral_code', cleanCode)
         .maybeSingle();
-
       if (referrer) referrerId = referrer.id;
     }
 
-    // --- Hash password (cost 10) ---
     const password_hash = await bcrypt.hash(password, 10);
 
-    // --- Generate unique referral code (retry if collision) ---
     let newReferralCode = generateReferralCode();
     for (let attempt = 0; attempt < 5; attempt++) {
       const { data: clash } = await supabase
@@ -135,7 +137,6 @@ export async function POST(req: NextRequest) {
       newReferralCode = generateReferralCode();
     }
 
-    // --- Insert user with welcome bonus ---
     const { data: newUser, error: insertErr } = await supabase
       .from('users')
       .insert({
@@ -151,13 +152,11 @@ export async function POST(req: NextRequest) {
 
     if (insertErr || !newUser) {
       console.error('Register insert error:', insertErr);
-      return NextResponse.json(
-        { error: 'Could not create account. Please try again.' },
-        { status: 500 }
-      );
+      return isForm
+        ? failRedirect('Could not create account')
+        : NextResponse.json({ error: 'Could not create account' }, { status: 500 });
     }
 
-    // --- Log the welcome bonus transaction ---
     await supabase.from('transactions').insert({
       user_id: newUser.id,
       type: 'welcome_bonus',
@@ -166,7 +165,6 @@ export async function POST(req: NextRequest) {
       meta: { source: 'registration' },
     });
 
-    // --- Build referral chain (Level 1, 2, 3) ---
     if (referrerId) {
       await supabase.from('referrals').insert({
         referrer_id: referrerId,
@@ -206,12 +204,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Sign JWT and set cookie ---
-    const token = signUserToken({
-      userId: newUser.id,
-      phone: newUser.phone,
-    });
+    const token = signUserToken({ userId: newUser.id, phone: newUser.phone });
 
+    // --- Form submission → redirect ---
+    if (isForm) {
+      const res = NextResponse.redirect(new URL('/modules', req.url));
+      res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
+      return res;
+    }
+
+    // --- JSON response ---
     const res = NextResponse.json({
       success: true,
       user: {
@@ -224,13 +226,11 @@ export async function POST(req: NextRequest) {
     });
 
     res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
-
     return res;
   } catch (err: any) {
     console.error('Register error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong. Please try again.' },
-      { status: 500 }
-    );
+    return isForm
+      ? failRedirect('Something went wrong')
+      : NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
-        }
+}
