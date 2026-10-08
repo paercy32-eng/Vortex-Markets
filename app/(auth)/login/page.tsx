@@ -1,58 +1,18 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
 
-// ==========================================
-// LOGIN FORM
-// ==========================================
 function LoginForm() {
-  const router = useRouter();
-
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!phone || !password) {
-      toast.error('Please enter phone and password');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login?t=' + Date.now(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({ phone, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || 'Login failed');
-        setLoading(false);
-        return;
-      }
-
-      toast.success(`Welcome back, ${data.user?.name?.split(' ')[0] || 'trader'}!`);
-      router.replace('/');
-      router.refresh();
-    } catch (err) {
-      toast.error('Network error. Please try again.');
-      setLoading(false);
-    }
-  }
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div className="min-h-screen bg-background flex flex-col px-6 py-10">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-foreground mb-2">
           Welcome back
         </h1>
         <p className="text-muted text-sm">
@@ -60,29 +20,45 @@ function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+          {error}
+        </div>
+      )}
+
+      <form
+        action="/api/auth/login"
+        method="POST"
+        onSubmit={() => setSubmitting(true)}
+        className="flex-1 flex flex-col gap-4"
+      >
         <div>
-          <label className="input-label">Phone Number</label>
+          <label htmlFor="phone" className="input-label">
+            Phone Number
+          </label>
           <input
+            id="phone"
+            name="phone"
             type="tel"
             className="input"
             placeholder="0700123456"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
             required
-            autoComplete="tel"
+            autoComplete="username"
             inputMode="tel"
+            autoFocus
           />
         </div>
 
         <div>
-          <label className="input-label">Password</label>
+          <label htmlFor="password" className="input-label">
+            Password
+          </label>
           <input
+            id="password"
+            name="password"
             type="password"
             className="input"
             placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
           />
@@ -93,9 +69,9 @@ function LoginForm() {
         <button
           type="submit"
           className="btn-primary w-full"
-          disabled={loading}
+          disabled={submitting}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {submitting ? 'Signing in...' : 'Sign In'}
         </button>
 
         <p className="text-center text-sm text-muted mt-2">
@@ -109,9 +85,6 @@ function LoginForm() {
   );
 }
 
-// ==========================================
-// PAGE
-// ==========================================
 export default function LoginPage() {
   return (
     <Suspense
