@@ -1,22 +1,28 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-function LoginForm() {
+function RegisterForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const [referralCode, setReferralCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) setReferralCode(ref.toUpperCase());
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col px-6 py-10">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Welcome back
+          Create account
         </h1>
         <p className="text-muted text-sm">
-          Sign in to access your account and modules.
+          Join Vortex Markets and start accessing our modules.
         </p>
       </div>
 
@@ -27,11 +33,26 @@ function LoginForm() {
       )}
 
       <form
-        action="/api/auth/login"
+        action="/api/auth/register"
         method="POST"
         onSubmit={() => setSubmitting(true)}
         className="flex-1 flex flex-col gap-4"
       >
+        <div>
+          <label htmlFor="name" className="input-label">
+            Full Name
+          </label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            className="input"
+            placeholder="John Doe"
+            required
+            autoComplete="name"
+          />
+        </div>
+
         <div>
           <label htmlFor="phone" className="input-label">
             Phone Number
@@ -45,7 +66,6 @@ function LoginForm() {
             required
             autoComplete="username"
             inputMode="tel"
-            autoFocus
           />
         </div>
 
@@ -58,9 +78,42 @@ function LoginForm() {
             name="password"
             type="password"
             className="input"
-            placeholder="Enter your password"
+            placeholder="At least 6 characters"
             required
-            autoComplete="current-password"
+            autoComplete="new-password"
+            minLength={6}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="confirmPassword" className="input-label">
+            Confirm Password
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            className="input"
+            placeholder="Re-enter your password"
+            required
+            autoComplete="new-password"
+            minLength={6}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="referralCode" className="input-label">
+            Referral Code <span className="text-muted/70">(optional)</span>
+          </label>
+          <input
+            id="referralCode"
+            name="referralCode"
+            type="text"
+            className="input uppercase"
+            placeholder="VRTX-XXXXX"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            autoComplete="off"
           />
         </div>
 
@@ -71,13 +124,13 @@ function LoginForm() {
           className="btn-primary w-full"
           disabled={submitting}
         >
-          {submitting ? 'Signing in...' : 'Sign In'}
+          {submitting ? 'Creating account...' : 'Create Account'}
         </button>
 
         <p className="text-center text-sm text-muted mt-2">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-primary font-semibold">
-            Create one
+          Already have an account?{' '}
+          <Link href="/login" className="text-primary font-semibold">
+            Sign in
           </Link>
         </p>
       </form>
@@ -85,7 +138,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <Suspense
       fallback={
@@ -94,7 +147,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginForm />
+      <RegisterForm />
     </Suspense>
   );
 }
