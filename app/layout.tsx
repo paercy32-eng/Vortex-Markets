@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   applicationName: 'Vortex Markets',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Vortex Markets',
   },
   formatDetection: {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0A0A0A',
+  themeColor: '#FAFAFA',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -38,29 +38,30 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-background text-white antialiased">
+      <body className="bg-background text-foreground antialiased">
         {children}
         <Toaster
           position="top-center"
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#1A1A1A',
-              color: '#FFFFFF',
-              border: '1px solid #2A2A2A',
+              background: '#FFFFFF',
+              color: '#111827',
+              border: '1px solid #E5E7EB',
               borderRadius: '16px',
               fontSize: '14px',
               padding: '12px 16px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
             },
             success: {
               iconTheme: {
-                primary: '#00D9FF',
-                secondary: '#0A0A0A',
+                primary: '#16A34A',
+                secondary: '#FFFFFF',
               },
             },
             error: {
               iconTheme: {
-                primary: '#EF4444',
+                primary: '#DC2626',
                 secondary: '#FFFFFF',
               },
             },
