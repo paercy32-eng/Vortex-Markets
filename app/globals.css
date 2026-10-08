@@ -6,11 +6,12 @@
    BASE
    ========================================== */
 :root {
-  --background: #0A0A0A;
-  --card: #1A1A1A;
-  --primary: #00D9FF;
-  --muted: #8A8A8A;
-  --border: #2A2A2A;
+  --background: #FAFAFA;
+  --card: #FFFFFF;
+  --primary: #DC2626;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --foreground: #111827;
 }
 
 * {
@@ -20,7 +21,7 @@
 html,
 body {
   background-color: var(--background);
-  color: #FFFFFF;
+  color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -64,19 +65,19 @@ button {
    ========================================== */
 @layer components {
   .card {
-    @apply bg-card rounded-2xl border border-border p-4;
+    @apply bg-card rounded-2xl border border-border p-4 shadow-sm;
   }
 
   .card-flat {
-    @apply bg-card rounded-2xl p-4;
+    @apply bg-card rounded-2xl p-4 border border-border;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-primary text-black font-semibold px-6 py-3 transition active:scale-95 disabled:opacity-50 disabled:active:scale-100;
+    @apply inline-flex items-center justify-center rounded-full bg-primary text-white font-semibold px-6 py-3 transition active:scale-95 disabled:opacity-50 disabled:active:scale-100;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full bg-card border border-border text-white font-semibold px-6 py-3 transition active:scale-95 disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-full bg-card border border-border text-foreground font-semibold px-6 py-3 transition active:scale-95 disabled:opacity-50;
   }
 
   .btn-ghost {
@@ -84,7 +85,7 @@ button {
   }
 
   .input {
-    @apply w-full bg-card border border-border rounded-2xl px-4 py-4 text-white placeholder:text-muted outline-none focus:border-primary transition;
+    @apply w-full bg-card border border-border rounded-2xl px-4 py-4 text-foreground placeholder:text-muted outline-none focus:border-primary transition;
   }
 
   .input-label {
@@ -112,11 +113,11 @@ button {
   }
 
   .pill-muted {
-    @apply pill bg-white/5 text-muted;
+    @apply pill bg-gray-100 text-muted;
   }
 
   .text-muted {
-    @apply text-[#8A8A8A];
+    @apply text-[#6B7280];
   }
 
   .section-title {
@@ -132,11 +133,11 @@ button {
   }
 
   .row-value {
-    @apply text-white font-medium text-right;
+    @apply text-foreground font-medium text-right;
   }
 
   .modal-overlay {
-    @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4;
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4;
   }
 
   .modal-content {
@@ -144,11 +145,11 @@ button {
   }
 
   .modal-title {
-    @apply text-lg font-semibold text-white mb-4;
+    @apply text-lg font-semibold text-foreground mb-4;
   }
 
   .modal-note {
-    @apply text-xs text-muted bg-white/5 rounded-xl p-3 border border-border;
+    @apply text-xs text-muted bg-gray-50 rounded-xl p-3 border border-border;
   }
 }
 
@@ -202,4 +203,4 @@ button {
   filter: blur(6px);
   user-select: none;
   pointer-events: none;
-  }
+     }
