@@ -2,24 +2,24 @@
 module.exports = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        background: '#0A0A0A',
-        card: '#1A1A1A',
-        primary: '#00D9FF',
-        muted: '#8A8A8A',
-        border: '#2A2A2A',
-        success: '#22C55E',
-        danger: '#EF4444',
-        warning: '#F59E0B',
+        background: '#FAFAFA',
+        card: '#FFFFFF',
+        primary: '#DC2626',
+        primaryDark: '#B91C1C',
+        muted: '#6B7280',
+        border: '#E5E7EB',
+        foreground: '#111827',
+        success: '#16A34A',
+        danger: '#991B1B',
+        warning: '#D97706',
       },
       borderRadius: {
-        'xl': '16px',
+        xl: '16px',
         '2xl': '20px',
       },
       fontFamily: {
