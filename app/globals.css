@@ -203,4 +203,55 @@ button {
   filter: blur(6px);
   user-select: none;
   pointer-events: none;
+}
+
+/* ==========================================
+   LIGHT THEME OVERRIDES
+   The app was originally built dark. These
+   overrides flip dark-theme leftovers to light
+   without touching every page.
+   ========================================== */
+@layer utilities {
+  /* Headings that used to be white — now dark grey */
+  .text-white {
+    color: #111827 !important;
+  }
+  .hover\:text-white:hover {
+    color: #111827 !important;
+  }
+  .group:hover .group-hover\:text-white {
+    color: #111827 !important;
+  }
+
+  /* Old subtle white backgrounds — now subtle grey */
+  .bg-white\/5 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+  .bg-white\/10 {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+  }
+  .hover\:bg-white\/5:hover {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  /* Old subtle white borders — now light grey borders */
+  .border-white\/10 {
+    border-color: #E5E7EB !important;
+  }
+  .border-white\/5 {
+    border-color: #F3F4F6 !important;
+  }
+
+  /* Slightly tinted white text used for muted labels */
+  .text-white\/70,
+  .text-white\/60,
+  .text-white\/80,
+  .text-white\/90 {
+    color: #4B5563 !important;
+  }
+
+  /* Keep black text truly black (buttons on red bg) */
+  .text-black {
+    color: #FFFFFF !important;
+  }
      }
