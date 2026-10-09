@@ -102,67 +102,41 @@ export default function ModulesPage() {
           <p className="text-muted text-sm">No products in this group.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {filtered.map((product) => (
-            /* NEW CARD LAYOUT MATCHING THE IMAGE */
-            <div
+            <button
               key={product.id}
-              className="relative w-full rounded-2xl overflow-hidden shadow-lg transition transform active:scale-[0.98] cursor-pointer group"
+              className="card text-left transition active:scale-[0.98]"
               onClick={() => setSelected(product)}
             >
-              {/* Background Image */}
-              {/* Replace this URL with your actual dynamic product image if available */}
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                style={{
-                  backgroundImage: 'url("https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80")',
-                }}
-              ></div>
-
-              {/* Gradient Overlay (Darkens the right side for text readability) */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-black/60 to-black/80"></div>
-
-              {/* Content Container */}
-              <div className="relative z-10 p-5 flex flex-col h-full">
-                {/* Title */}
-                <h3 className="text-2xl font-bold text-white mb-5">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h3 className="text-white font-semibold text-base flex-1 min-w-0">
                   {product.name}
                 </h3>
-
-                {/* Stats Grid (2x2) */}
-                <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-6">
-                  <div>
-                    <p className="text-gray-400 text-xs font-medium mb-1">Cost</p>
-                    <p className="text-white font-bold text-lg">
-                      UGX {product.price.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs font-medium mb-1">Term</p>
-                    <p className="text-white font-bold text-lg">
-                      {product.cycle_days} Days
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs font-medium mb-1">Daily Yield</p>
-                    <p className="text-white font-bold text-lg">
-                      UGX {product.daily_return.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs font-medium mb-1">Expected Return</p>
-                    <p className="text-white font-bold text-lg">
-                      UGX {product.total_return.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Buy Button */}
-                <button className="mt-auto w-full bg-[#e52b2b] hover:bg-[#c42222] text-white font-semibold py-3.5 px-4 rounded-xl transition duration-200">
-                  Buy Asset
-                </button>
+                <span className="pill-primary shrink-0">
+                  {product.cycle_days} Days
+                </span>
               </div>
-            </div>
+
+              <div className="row">
+                <span className="row-label">Price</span>
+                <span className="row-value">
+                  {product.price.toLocaleString()} UGX
+                </span>
+              </div>
+              <div className="row">
+                <span className="row-label">Daily Return</span>
+                <span className="row-value text-primary">
+                  {product.daily_return.toLocaleString()} UGX
+                </span>
+              </div>
+              <div className="row">
+                <span className="row-label">Total Return</span>
+                <span className="row-value text-success">
+                  {product.total_return.toLocaleString()} UGX
+                </span>
+              </div>
+            </button>
           ))}
         </div>
       )}
@@ -238,25 +212,24 @@ function PurchaseModal({
           <h4 className="text-white font-semibold text-lg mb-3">
             {product.name}
           </h4>
-          {/* UPDATED LABELS TO MATCH THE NEW CARD LAYOUT */}
           <div className="row">
-            <span className="row-label">Cost</span>
+            <span className="row-label">Price</span>
             <span className="row-value">
               {product.price.toLocaleString()} UGX
             </span>
           </div>
           <div className="row">
-            <span className="row-label">Term</span>
+            <span className="row-label">Cycle</span>
             <span className="row-value">{product.cycle_days} Days</span>
           </div>
           <div className="row">
-            <span className="row-label">Daily Yield</span>
+            <span className="row-label">Daily Return</span>
             <span className="row-value text-primary">
               {product.daily_return.toLocaleString()} UGX
             </span>
           </div>
           <div className="row">
-            <span className="row-label">Expected Return</span>
+            <span className="row-label">Total Return</span>
             <span className="row-value text-success">
               {product.total_return.toLocaleString()} UGX
             </span>
@@ -281,4 +254,4 @@ function PurchaseModal({
       </div>
     </div>
   );
-          }
+}
