@@ -6,9 +6,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// HELPERS (same normalization as auth routes)
-// ==========================================
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -22,14 +19,14 @@ function isValidPhone(phone: string): boolean {
 
 // ==========================================
 // POST /api/profile/bind
-// Saves the user's bound phone + full name.
-// These are the details used for withdrawals.
-// Can only be set once (unless admin resets it).
+// Body: { phone, fullName }
+// Sets OR updates the bound account details.
+// Blocked if the user has a pending withdrawal
+// (to prevent redirecting funds mid-review).
 // ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-
     if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
@@ -37,18 +34,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Prevent rebinding (once bound, stays bound) ---
-    if (user.is_bound) {
-      return NextResponse.json(
-        { error: 'Account is already bound. Contact support to change.' },
-        { status: 400 }
-      );
-    }
-
     const body = await req.json();
     const { phone: rawPhone, fullName } = body || {};
 
-    // --- Validate full name ---
     if (!fullName || typeof fullName !== 'string' || fullName.trim().length < 3) {
       return NextResponse.json(
         { error: 'Please enter your full registered name' },
@@ -56,7 +44,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Validate phone ---
     if (!rawPhone || typeof rawPhone !== 'string') {
       return NextResponse.json(
         { error: 'Phone number is required' },
@@ -73,8 +60,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Update user ---
     const supabase = getServiceClient();
+
+    // --- Block changes if user has a pending withdrawal ---
+    const { data: pendingWithdrawal } = await supabase
+      .from('withdrawals')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (pendingWithdrawal) {
+      return NextResponse.json(
+        {
+          error:
+            'You have a pending withdrawal. Wait for admin review before changing your bound account.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const wasBound = user.is_bound;
+
     const { error } = await supabase
       .from('users')
       .update({
@@ -87,14 +94,26 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('Bind error:', error);
       return NextResponse.json(
-        { error: 'Could not bind account. Please try again.' },
+        { error: 'Could not save. Please try again.' },
         { status: 500 }
       );
     }
 
+    // --- Log the change ---
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: wasBound ? 'binding_updated' : 'binding_created',
+      amount: 0,
+      status: 'completed',
+      meta: {
+        bound_phone: phone,
+        bound_full_name: fullName.trim(),
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      message: 'Account bound successfully',
+      message: wasBound ? 'Bound account updated' : 'Account bound successfully',
       bound_phone: phone,
       bound_full_name: fullName.trim(),
     });
