@@ -6,25 +6,18 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// WITHDRAWAL RULES
-// ==========================================
 const MIN_WITHDRAWAL = 4000;
-const WITHDRAWAL_FEE_RATE = 0.15; // 15%
+const WITHDRAWAL_FEE_RATE = 0.15;
 
 // ==========================================
 // POST /api/withdraw
-// Creates a withdrawal request.
-// Rules:
-//  - User must have at least one active module
-//  - Minimum withdrawal: 4,000 UGX
-//  - 15% fee is deducted from the amount
-//  - Balance is NOT deducted here — admin approval does that
+// Creates a withdrawal request AND immediately
+// deducts the amount from the user's balance.
+// If admin rejects, the amount is refunded.
 // ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-
     if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
@@ -32,7 +25,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Must be bound ---
     if (!user.is_bound || !user.bound_phone || !user.bound_full_name) {
       return NextResponse.json(
         { error: 'Please bind your account first' },
@@ -41,10 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { amount: rawAmount } = body || {};
-    const amount = Number(rawAmount);
+    const amount = Number(body?.amount);
 
-    // --- Validate amount ---
     if (!amount || isNaN(amount) || amount <= 0) {
       return NextResponse.json(
         { error: 'Enter a valid amount' },
@@ -55,13 +45,6 @@ export async function POST(req: NextRequest) {
     if (amount < MIN_WITHDRAWAL) {
       return NextResponse.json(
         { error: `Minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} UGX` },
-        { status: 400 }
-      );
-    }
-
-    if (amount > user.balance) {
-      return NextResponse.json(
-        { error: 'Insufficient balance' },
         { status: 400 }
       );
     }
@@ -102,11 +85,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Compute fee and net amount ---
-    const fee = Math.round(amount * WITHDRAWAL_FEE_RATE * 100) / 100;
-    const netAmount = Math.round((amount - fee) * 100) / 100;
+    // --- Re-fetch fresh balance ---
+    const { data: freshUser } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', user.id)
+      .single();
 
-    // --- Create the withdrawal request ---
+    const currentBalance = Number(freshUser?.balance) || 0;
+
+    if (amount > currentBalance) {
+      return NextResponse.json(
+        { error: 'Insufficient balance' },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================
+    // DEDUCT balance immediately
+    // ==========================================
+    const newBalance = currentBalance - amount;
+
+    const { error: balErr } = await supabase
+      .from('users')
+      .update({ balance: newBalance })
+      .eq('id', user.id);
+
+    if (balErr) {
+      console.error('Balance deduct error:', balErr);
+      return NextResponse.json(
+        { error: 'Could not process withdrawal' },
+        { status: 500 }
+      );
+    }
+
+    // ==========================================
+    // Create withdrawal record
+    // ==========================================
     const { data: withdrawal, error } = await supabase
       .from('withdrawals')
       .insert({
@@ -122,6 +137,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error || !withdrawal) {
+      // Rollback balance
+      await supabase
+        .from('users')
+        .update({ balance: currentBalance })
+        .eq('id', user.id);
+
       console.error('Withdraw insert error:', error);
       return NextResponse.json(
         { error: 'Could not create withdrawal request' },
@@ -129,15 +150,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ==========================================
+    // Log transaction (deduction)
+    // ==========================================
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'withdrawal_requested',
+      amount: -amount,
+      status: 'completed',
+      meta: {
+        withdrawal_id: withdrawal.id,
+        recipient_name: withdrawal.recipient_name,
+        recipient_phone: withdrawal.recipient_phone,
+        note: 'Deducted on submit. Will be refunded if rejected.',
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      message: 'Withdrawal request submitted. Awaiting admin approval.',
+      message: 'Withdrawal submitted. Awaiting admin approval.',
       withdrawal: {
         ...withdrawal,
         amount: Number(withdrawal.amount) || 0,
-        fee,
-        net_amount: netAmount,
       },
+      newBalance,
     });
   } catch (err: any) {
     console.error('Withdraw endpoint error:', err);
