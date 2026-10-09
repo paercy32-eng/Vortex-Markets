@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, name, phone, password_hash, referral_code, balance')
+      .select('id, name, phone, password_hash, referral_code, balance, is_banned')
       .eq('phone', phone)
       .maybeSingle();
 
@@ -86,6 +86,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- Check ban BEFORE verifying password to save compute ---
+    // (Still return generic message to avoid leaking account status on wrong password,
+    //  but if password is correct and user is banned, give a clear message.)
     const passwordOk = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordOk) {
@@ -100,10 +103,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- Password correct, now check ban ---
+    if (user.is_banned) {
+      if (isForm) {
+        return NextResponse.redirect(
+          new URL('/login?error=' + encodeURIComponent('Account suspended. Contact support.'), req.url)
+        );
+      }
+      return NextResponse.json(
+        { error: 'Account suspended. Contact support.' },
+        { status: 403 }
+      );
+    }
+
     const token = signUserToken({ userId: user.id, phone: user.phone });
 
     // ==========================================
-    // FORM SUBMISSION (browser) → redirect
+    // FORM SUBMISSION → redirect
     // ==========================================
     if (isForm) {
       const res = NextResponse.redirect(new URL('/modules', req.url));
@@ -112,7 +128,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ==========================================
-    // JSON SUBMISSION (API clients)
+    // JSON SUBMISSION
     // ==========================================
     const res = NextResponse.json({
       success: true,
@@ -136,4 +152,4 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
-}
+          }
