@@ -6,9 +6,6 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { RefreshIcon, CloseIcon } from '@/components/icons';
 
-// ==========================================
-// TYPES
-// ==========================================
 interface AdminUser {
   id: string;
   name: string;
@@ -19,6 +16,7 @@ interface AdminUser {
   is_bound: boolean;
   bound_phone: string | null;
   bound_full_name: string | null;
+  is_banned: boolean;
   active_modules: number;
   created_at: string;
 }
@@ -33,6 +31,7 @@ interface UserDetail {
     is_bound: boolean;
     bound_phone: string | null;
     bound_full_name: string | null;
+    is_banned: boolean;
     created_at: string;
   };
   modules: Array<{
@@ -57,13 +56,17 @@ interface UserDetail {
   }>;
 }
 
-// ==========================================
-// HELPERS
-// ==========================================
+interface ProductOption {
+  id: string;
+  name: string;
+  price: number;
+  cycle_days: number;
+  daily_return: number;
+}
+
 function formatDate(iso: string): string {
   try {
-    const d = new Date(iso);
-    return d.toLocaleString('en-GB', {
+    return new Date(iso).toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -75,8 +78,7 @@ function formatDate(iso: string): string {
 
 function formatDateTime(iso: string): string {
   try {
-    const d = new Date(iso);
-    return d.toLocaleString('en-GB', {
+    return new Date(iso).toLocaleString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -100,14 +102,14 @@ function transactionLabel(type: string): string {
     referral_commission: 'Referral Commission',
     daily_return: 'Daily Return',
     admin_adjustment: 'Admin Adjustment',
+    admin_ban: 'Account Banned',
+    admin_unban: 'Account Unbanned',
+    admin_granted_module: 'Admin Granted Module',
     binding_reset: 'Binding Reset',
   };
   return map[type] || type;
 }
 
-// ==========================================
-// PAGE
-// ==========================================
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -115,6 +117,17 @@ export default function AdminUsersPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+
+  async function loadProducts() {
+    try {
+      const res = await fetch('/api/admin/products?t=' + Date.now(), {
+        cache: 'no-store',
+      });
+      const data = await res.json();
+      if (res.ok) setProducts(data.products || []);
+    } catch {}
+  }
 
   async function load(showSpinner = false) {
     if (showSpinner) setRefreshing(true);
@@ -151,6 +164,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     load();
+    loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -175,7 +189,7 @@ export default function AdminUsersPage() {
             >
               ← Dashboard
             </Link>
-            <h1 className="text-lg font-bold text-white leading-tight">
+            <h1 className="text-lg font-bold text-foreground leading-tight">
               Users
             </h1>
           </div>
@@ -191,7 +205,6 @@ export default function AdminUsersPage() {
       </header>
 
       <main className="max-w-2xl mx-auto w-full px-5 py-5 pb-16">
-        {/* Search bar */}
         <form onSubmit={handleSearchSubmit} className="mb-5">
           <div className="relative">
             <input
@@ -213,7 +226,7 @@ export default function AdminUsersPage() {
               )}
               <button
                 type="submit"
-                className="px-3 py-2 rounded-full bg-primary text-black text-xs font-semibold"
+                className="px-3 py-2 rounded-full bg-primary text-[#FFFFFF] text-xs font-semibold"
               >
                 Search
               </button>
@@ -241,14 +254,19 @@ export default function AdminUsersPage() {
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-sm truncate">
+                    <p className="text-foreground font-semibold text-sm truncate">
                       {u.name}
                     </p>
                     <p className="text-muted text-xs mt-0.5">{u.phone}</p>
                   </div>
-                  {u.is_bound && (
-                    <span className="pill-success">BOUND</span>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {u.is_banned && (
+                      <span className="pill-danger">BANNED</span>
+                    )}
+                    {u.is_bound && !u.is_banned && (
+                      <span className="pill-success">BOUND</span>
+                    )}
+                  </div>
                 </div>
                 <div className="row">
                   <span className="row-label">Balance</span>
@@ -275,6 +293,7 @@ export default function AdminUsersPage() {
       {selectedUserId && (
         <UserDetailModal
           userId={selectedUserId}
+          products={products}
           onClose={() => setSelectedUserId(null)}
           onAction={() => load(true)}
         />
@@ -283,15 +302,14 @@ export default function AdminUsersPage() {
   );
 }
 
-// ==========================================
-// USER DETAIL MODAL
-// ==========================================
 function UserDetailModal({
   userId,
+  products,
   onClose,
   onAction,
 }: {
   userId: string;
+  products: ProductOption[];
   onClose: () => void;
   onAction: () => void;
 }) {
@@ -345,7 +363,6 @@ function UserDetailModal({
           </div>
         ) : (
           <>
-            {/* Tab switcher */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               {(['info', 'modules', 'tx'] as const).map((t) => (
                 <button
@@ -353,7 +370,7 @@ function UserDetailModal({
                   onClick={() => setActiveTab(t)}
                   className={`py-2 rounded-full text-xs font-semibold transition ${
                     activeTab === t
-                      ? 'bg-primary text-black'
+                      ? 'bg-primary text-[#FFFFFF]'
                       : 'bg-card border border-border text-muted'
                   }`}
                 >
@@ -362,17 +379,17 @@ function UserDetailModal({
               ))}
             </div>
 
-            {/* INFO TAB */}
             {activeTab === 'info' && (
-              <InfoTab detail={detail} onAction={onAction} />
+              <InfoTab
+                detail={detail}
+                products={products}
+                onAction={() => {
+                  loadDetail();
+                  onAction();
+                }}
+              />
             )}
-
-            {/* MODULES TAB */}
-            {activeTab === 'modules' && (
-              <ModulesTab modules={detail.modules} />
-            )}
-
-            {/* TRANSACTIONS TAB */}
+            {activeTab === 'modules' && <ModulesTab modules={detail.modules} />}
             {activeTab === 'tx' && (
               <TransactionsTab transactions={detail.transactions} />
             )}
@@ -383,36 +400,71 @@ function UserDetailModal({
   );
 }
 
-// ==========================================
-// INFO TAB
-// ==========================================
 function InfoTab({
   detail,
+  products,
   onAction,
 }: {
   detail: UserDetail;
+  products: ProductOption[];
   onAction: () => void;
 }) {
   const { user } = detail;
   const [showAdjust, setShowAdjust] = useState(false);
   const [showResetBind, setShowResetBind] = useState(false);
+  const [showBan, setShowBan] = useState(false);
+  const [showGrant, setShowGrant] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  async function runAction(action: string, extra?: Record<string, any>) {
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}?t=` + Date.now(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Action failed');
+        setProcessing(false);
+        return;
+      }
+
+      toast.success(data.message || 'Done');
+      setProcessing(false);
+      onAction();
+    } catch {
+      toast.error('Network error');
+      setProcessing(false);
+    }
+  }
 
   return (
     <div>
       <div className="card-flat mb-3">
-        <p className="text-white font-semibold">{user.name}</p>
-        <p className="text-muted text-xs mt-1">{user.phone}</p>
-        <p className="text-muted text-xs mt-1">
-          Code: <span className="text-primary">{user.referral_code}</span>
-        </p>
-        <p className="text-muted text-xs mt-1">
-          Joined: {formatDate(user.created_at)}
-        </p>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground font-semibold truncate">
+              {user.name}
+            </p>
+            <p className="text-muted text-xs mt-1">{user.phone}</p>
+            <p className="text-muted text-xs mt-1">
+              Code: <span className="text-primary">{user.referral_code}</span>
+            </p>
+            <p className="text-muted text-xs mt-1">
+              Joined: {formatDate(user.created_at)}
+            </p>
+          </div>
+          {user.is_banned && <span className="pill-danger">BANNED</span>}
+        </div>
       </div>
 
       <div className="card-flat mb-3">
         <p className="text-muted text-xs uppercase mb-1">Balance</p>
-        <p className="text-white font-bold text-2xl">
+        <p className="text-foreground font-bold text-2xl">
           {user.balance.toLocaleString()} UGX
         </p>
         <button
@@ -424,10 +476,23 @@ function InfoTab({
       </div>
 
       <div className="card-flat mb-3">
+        <p className="text-muted text-xs uppercase mb-2">Grant Module (Free)</p>
+        <p className="text-muted text-xs mb-3">
+          Give this user a module for free. No commission, no balance deduction.
+        </p>
+        <button
+          onClick={() => setShowGrant(true)}
+          className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+        >
+          Grant a Module
+        </button>
+      </div>
+
+      <div className="card-flat mb-3">
         <p className="text-muted text-xs uppercase mb-2">Bound Account</p>
         {user.is_bound ? (
           <>
-            <p className="text-white text-sm">{user.bound_full_name}</p>
+            <p className="text-foreground text-sm">{user.bound_full_name}</p>
             <p className="text-muted text-xs mt-1">{user.bound_phone}</p>
             <button
               onClick={() => setShowResetBind(true)}
@@ -438,6 +503,26 @@ function InfoTab({
           </>
         ) : (
           <p className="text-muted text-xs">Not bound yet.</p>
+        )}
+      </div>
+
+      <div className="card-flat mb-3">
+        <p className="text-muted text-xs uppercase mb-2">Account Status</p>
+        {user.is_banned ? (
+          <button
+            onClick={() => runAction('unban')}
+            disabled={processing}
+            className="w-full py-3 rounded-full bg-success text-[#FFFFFF] text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+          >
+            {processing ? '...' : 'Unban User'}
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowBan(true)}
+            className="w-full py-3 rounded-full bg-danger/10 text-danger text-sm font-semibold active:scale-95 transition"
+          >
+            Ban User
+          </button>
         )}
       </div>
 
@@ -454,28 +539,49 @@ function InfoTab({
         />
       )}
 
+      {showGrant && (
+        <GrantModuleModal
+          userId={user.id}
+          products={products}
+          onClose={() => setShowGrant(false)}
+          onSuccess={() => {
+            setShowGrant(false);
+            onAction();
+          }}
+        />
+      )}
+
       {showResetBind && (
         <ConfirmModal
           title="Reset Binding?"
-          message="This clears the user's bound phone and name so they can bind again. Use this if they made a typo."
+          message="This clears the user's bound phone and name so they can bind again."
           confirmLabel="Reset"
-          confirmClass="bg-warning text-black"
-          endpoint={`/api/admin/users/${user.id}`}
-          action="reset_binding"
-          onClose={() => setShowResetBind(false)}
-          onSuccess={() => {
+          confirmClass="bg-warning text-[#FFFFFF]"
+          onConfirm={() => {
             setShowResetBind(false);
-            onAction();
+            runAction('reset_binding');
           }}
+          onClose={() => setShowResetBind(false)}
+        />
+      )}
+
+      {showBan && (
+        <ConfirmModal
+          title="Ban this user?"
+          message="Banned users cannot log in or use the app. You can unban them later."
+          confirmLabel="Ban"
+          confirmClass="bg-danger text-[#FFFFFF]"
+          onConfirm={() => {
+            setShowBan(false);
+            runAction('ban');
+          }}
+          onClose={() => setShowBan(false)}
         />
       )}
     </div>
   );
 }
 
-// ==========================================
-// MODULES TAB
-// ==========================================
 function ModulesTab({ modules }: { modules: UserDetail['modules'] }) {
   if (modules.length === 0) {
     return (
@@ -490,7 +596,7 @@ function ModulesTab({ modules }: { modules: UserDetail['modules'] }) {
       {modules.map((m) => (
         <div key={m.id} className="card-flat">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <p className="text-white font-semibold text-sm flex-1 min-w-0">
+            <p className="text-foreground font-semibold text-sm flex-1 min-w-0">
               {m.product_name}
             </p>
             <span
@@ -526,9 +632,6 @@ function ModulesTab({ modules }: { modules: UserDetail['modules'] }) {
   );
 }
 
-// ==========================================
-// TRANSACTIONS TAB
-// ==========================================
 function TransactionsTab({
   transactions,
 }: {
@@ -547,7 +650,7 @@ function TransactionsTab({
       {transactions.map((t) => (
         <div key={t.id} className="card-flat">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="text-white font-medium text-sm">
+            <p className="text-foreground font-medium text-sm">
               {transactionLabel(t.type)}
             </p>
             <p
@@ -563,18 +666,13 @@ function TransactionsTab({
               {t.amount.toLocaleString()} UGX
             </p>
           </div>
-          <p className="text-muted text-xs">
-            {formatDateTime(t.created_at)}
-          </p>
+          <p className="text-muted text-xs">{formatDateTime(t.created_at)}</p>
         </div>
       ))}
     </div>
   );
 }
 
-// ==========================================
-// ADJUST BALANCE MODAL
-// ==========================================
 function AdjustBalanceModal({
   userId,
   userName,
@@ -597,7 +695,7 @@ function AdjustBalanceModal({
 
   async function submit() {
     if (!numericAmount || numericAmount === 0) {
-      toast.error('Enter an amount (positive or negative)');
+      toast.error('Enter an amount');
       return;
     }
     if (!reason.trim()) {
@@ -657,9 +755,7 @@ function AdjustBalanceModal({
           </p>
         </div>
 
-        <label className="input-label">
-          Amount (use - for deductions)
-        </label>
+        <label className="input-label">Amount (use - for deductions)</label>
         <input
           type="number"
           className="input mb-4"
@@ -704,48 +800,48 @@ function AdjustBalanceModal({
   );
 }
 
-// ==========================================
-// CONFIRM MODAL (generic)
-// ==========================================
-function ConfirmModal({
-  title,
-  message,
-  confirmLabel,
-  confirmClass,
-  endpoint,
-  action,
+function GrantModuleModal({
+  userId,
+  products,
   onClose,
   onSuccess,
 }: {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  confirmClass: string;
-  endpoint: string;
-  action: string;
+  userId: string;
+  products: ProductOption[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const selected = products.find((p) => p.id === selectedId);
+
   async function submit() {
+    if (!selectedId) {
+      toast.error('Select a module');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch(`${endpoint}?t=` + Date.now(), {
+      const res = await fetch(`/api/admin/users/${userId}?t=` + Date.now(), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({
+          action: 'grant_module',
+          productId: selectedId,
+        }),
       });
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Action failed');
+        toast.error(data.error || 'Could not grant module');
         setLoading(false);
         return;
       }
 
-      toast.success(data.message || 'Done');
+      toast.success(data.message || 'Module granted');
       onSuccess();
     } catch {
       toast.error('Network error');
@@ -759,25 +855,116 @@ function ConfirmModal({
         className="modal-content animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Grant Module</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="modal-note mb-4">
+          This gives the user the selected module for free. No commission,
+          no balance deduction.
+        </div>
+
+        <label className="input-label">Select Module</label>
+        <div className="max-h-64 overflow-y-auto mb-4">
+          {products.map((p) => {
+            const isSelected = selectedId === p.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setSelectedId(p.id)}
+                className={`w-full text-left p-3 rounded-xl mb-2 border transition ${
+                  isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-card'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-foreground font-medium text-sm truncate">
+                      {p.name}
+                    </p>
+                    <p className="text-muted text-xs mt-0.5">
+                      {p.cycle_days} days · {p.daily_return.toLocaleString()}{' '}
+                      UGX/day
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <span className="text-primary text-lg">✓</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {selected && (
+          <div className="card-flat mb-4">
+            <div className="row">
+              <span className="row-label">Selected</span>
+              <span className="row-value text-sm">{selected.name}</span>
+            </div>
+            <div className="row">
+              <span className="row-label">Value (free)</span>
+              <span className="row-value text-sm">
+                {selected.price.toLocaleString()} UGX
+              </span>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={submit}
+          disabled={loading || !selectedId}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Granting...' : 'Grant Module'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  confirmClass,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  confirmClass: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="modal-title">{title}</h3>
         <div className="modal-note mb-4">{message}</div>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onClose}
-            disabled={loading}
-            className="py-3 rounded-full bg-card border border-border text-white text-sm font-semibold"
+            className="py-3 rounded-full bg-card border border-border text-foreground text-sm font-semibold"
           >
             Cancel
           </button>
           <button
-            onClick={submit}
-            disabled={loading}
-            className={`py-3 rounded-full text-sm font-semibold active:scale-95 transition disabled:opacity-50 ${confirmClass}`}
+            onClick={onConfirm}
+            className={`py-3 rounded-full text-sm font-semibold active:scale-95 transition ${confirmClass}`}
           >
-            {loading ? '...' : confirmLabel}
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
   );
-          }
+              }
