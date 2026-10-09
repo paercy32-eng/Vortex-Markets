@@ -8,9 +8,8 @@ export const fetchCache = 'force-no-store';
 
 // ==========================================
 // GET /api/admin/deposits?status=pending
-// Returns all deposits (payments with type='deposit'),
-// optionally filtered by status.
-// Includes the user's name and phone.
+// Returns all deposits with full details:
+// network, sender phone, transaction ID.
 // ==========================================
 export async function GET(req: NextRequest) {
   try {
@@ -30,7 +29,9 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('payments')
-      .select('id, user_id, amount, status, reference, created_at')
+      .select(
+        'id, user_id, amount, status, reference, network, sender_phone, transaction_id, admin_note, created_at'
+      )
       .eq('type', 'deposit')
       .order('created_at', { ascending: false })
       .limit(200);
@@ -51,7 +52,6 @@ export async function GET(req: NextRequest) {
 
     const rows = deposits || [];
 
-    // --- Fetch user info for each deposit ---
     const userIds = Array.from(new Set(rows.map((d) => d.user_id)));
 
     let usersMap: Record<string, { name: string; phone: string }> = {};
@@ -78,6 +78,10 @@ export async function GET(req: NextRequest) {
       amount: Number(d.amount) || 0,
       status: d.status,
       reference: d.reference,
+      network: d.network,
+      sender_phone: d.sender_phone,
+      transaction_id: d.transaction_id,
+      admin_note: d.admin_note,
       created_at: d.created_at,
     }));
 
