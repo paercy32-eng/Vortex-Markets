@@ -4,9 +4,6 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { CopyIcon } from '@/components/icons';
 
-// ==========================================
-// TYPES
-// ==========================================
 interface ReferralEntry {
   id: string;
   referred_id: string;
@@ -27,9 +24,12 @@ interface ReferralsResponse {
   };
 }
 
-// ==========================================
-// PAGE
-// ==========================================
+const LEVEL_RATES: Record<number, string> = {
+  1: '20%',
+  2: '3%',
+  3: '1%',
+};
+
 export default function ReferralsPage() {
   const [data, setData] = useState<ReferralsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +82,6 @@ export default function ReferralsPage() {
     }
   }
 
-  // --- Loading state ---
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -91,7 +90,6 @@ export default function ReferralsPage() {
     );
   }
 
-  // --- No data (shouldn't happen, but safe) ---
   if (!data) {
     return (
       <div className="card text-center py-12">
@@ -110,13 +108,12 @@ export default function ReferralsPage() {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Referrals</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Referrals</h1>
         <p className="text-muted text-sm">
           Invite friends and earn from their purchases.
         </p>
       </div>
 
-      {/* Referral code card */}
       <div className="card mb-4">
         <p className="text-muted text-xs uppercase tracking-wide mb-2">
           Your Referral Code
@@ -135,23 +132,43 @@ export default function ReferralsPage() {
         </div>
         <button
           onClick={shareReferralLink}
-          className="mt-3 w-full text-center text-xs text-muted py-2 rounded-full bg-white/5 active:scale-95 transition"
+          className="mt-3 w-full text-center text-xs text-muted py-2 rounded-full bg-gray-50 active:scale-95 transition"
         >
           Copy invite link
         </button>
       </div>
 
-      {/* Total earnings card */}
       <div className="card mb-6">
         <p className="text-muted text-xs uppercase tracking-wide mb-1">
           Total Earnings
         </p>
-        <p className="text-white font-bold text-2xl">
-          {data.totalEarnings.toLocaleString()} <span className="text-base">UGX</span>
+        <p className="text-foreground font-bold text-2xl">
+          {data.totalEarnings.toLocaleString()}{' '}
+          <span className="text-base">UGX</span>
         </p>
       </div>
 
-      {/* Level tabs */}
+      <p className="section-title">Commission Rates</p>
+      <div className="card mb-6">
+        <div className="row">
+          <span className="row-label">Level 1 (Direct)</span>
+          <span className="row-value text-primary font-bold">20%</span>
+        </div>
+        <div className="row">
+          <span className="row-label">Level 2</span>
+          <span className="row-value text-primary font-bold">3%</span>
+        </div>
+        <div className="row">
+          <span className="row-label">Level 3</span>
+          <span className="row-value text-primary font-bold">1%</span>
+        </div>
+        <p className="text-muted text-xs mt-3">
+          Commissions are credited automatically when your referrals make
+          their first module purchase.
+        </p>
+      </div>
+
+      <p className="section-title">Your Team</p>
       <div className="grid grid-cols-3 gap-2 mb-4">
         {([1, 2, 3] as const).map((level) => {
           const count =
@@ -166,19 +183,25 @@ export default function ReferralsPage() {
             <button
               key={level}
               onClick={() => setActiveLevel(level)}
-              className={`py-2.5 rounded-full text-xs font-semibold transition ${
+              className={`py-2.5 rounded-full text-xs font-semibold transition flex flex-col items-center leading-tight ${
                 isActive
-                  ? 'bg-primary text-black'
+                  ? 'bg-primary text-[#FFFFFF]'
                   : 'bg-card border border-border text-muted'
               }`}
             >
-              L{level} ({count})
+              <span>L{level} ({count})</span>
+              <span
+                className={`text-[10px] mt-0.5 ${
+                  isActive ? 'text-[#FFFFFF]/80' : 'text-primary'
+                }`}
+              >
+                {LEVEL_RATES[level]}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Referral list */}
       {currentList.length === 0 ? (
         <div className="card text-center py-10">
           <p className="text-muted text-sm">
@@ -193,7 +216,7 @@ export default function ReferralsPage() {
               className="card flex items-center justify-between"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-white font-medium text-sm truncate">
+                <p className="text-foreground font-medium text-sm truncate">
                   {entry.name}
                 </p>
                 <p className="text-muted text-xs mt-0.5">{entry.phone}</p>
@@ -207,4 +230,4 @@ export default function ReferralsPage() {
       )}
     </div>
   );
-}
+              }
