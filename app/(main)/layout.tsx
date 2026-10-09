@@ -5,6 +5,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import BottomNav from '@/components/BottomNav';
 import { RefreshIcon } from '@/components/icons';
+import { Logo } from '@/components/Logo';
 
 export default function MainLayout({
   children,
@@ -25,12 +26,14 @@ export default function MainLayout({
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar — red */}
       <header className="sticky top-0 z-30 bg-primary border-b border-primaryDark shadow-sm">
-        <div className="max-w-md mx-auto flex items-center justify-between px-5 py-4">
-          <h1 className="text-lg font-bold text-[#FFFFFF]">
-            Vortex Markets
-          </h1>
+        <div className="max-w-md mx-auto flex items-center justify-between px-5 py-3">
+          <div className="flex items-center gap-2">
+            <Logo size={32} />
+            <span className="text-lg font-bold text-[#FFFFFF]">
+              Vortex Markets
+            </span>
+          </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -44,12 +47,10 @@ export default function MainLayout({
         </div>
       </header>
 
-      {/* Main content — white/light area */}
       <main className="flex-1 max-w-md mx-auto w-full px-5 pt-4 pb-28">
         {children}
       </main>
 
-      {/* Bottom nav — red */}
       <BottomNav />
     </div>
   );
