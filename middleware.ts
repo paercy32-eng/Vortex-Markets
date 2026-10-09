@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { USER_COOKIE_NAME } from '@/lib/jwt';
+import { USER_COOKIE_NAME, ADMIN_COOKIE_NAME } from '@/lib/jwt';
 
-// ==========================================
-// ROUTES
-// ==========================================
-const PUBLIC_ROUTES = ['/login', '/register'];
+// Public user routes
+const USER_PUBLIC = ['/login', '/register'];
 
-// ==========================================
-// MIDDLEWARE
-// ==========================================
+// Admin public routes (login page accessible without admin auth)
+const ADMIN_PUBLIC = ['/admin/login', '/admin/setup'];
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Skip API routes, static files, and Next.js internals
+  // Skip API and static files
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
@@ -22,22 +20,50 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Soft check — real verification happens in each API route
-  const token = req.cookies.get(USER_COOKIE_NAME)?.value;
-  const isLoggedIn = !!token;
+  // ==========================================
+  // ADMIN ROUTES
+  // ==========================================
+  if (pathname.startsWith('/admin')) {
+    const adminToken = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    const isAdminLoggedIn = !!adminToken;
+    const isAdminPublic = ADMIN_PUBLIC.some((r) => pathname.startsWith(r));
 
-  const isPublicRoute = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
+    // Not logged in, trying to access protected admin page
+    if (!isAdminLoggedIn && !isAdminPublic) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/admin/login';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
 
-  if (!isLoggedIn && !isPublicRoute) {
+    // Logged in, trying to access admin login page
+    if (isAdminLoggedIn && isAdminPublic) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/admin';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
+  }
+
+  // ==========================================
+  // USER ROUTES
+  // ==========================================
+  const userToken = req.cookies.get(USER_COOKIE_NAME)?.value;
+  const isUserLoggedIn = !!userToken;
+  const isUserPublic = USER_PUBLIC.some((r) => pathname.startsWith(r));
+
+  if (!isUserLoggedIn && !isUserPublic) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
-  if (isLoggedIn && isPublicRoute) {
+  if (isUserLoggedIn && isUserPublic) {
     const url = req.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/modules';
     url.search = '';
     return NextResponse.redirect(url);
   }
@@ -45,9 +71,6 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// ==========================================
-// MATCHER
-// ==========================================
 export const config = {
   matcher: [
     '/((?!api|_next|_static|favicon.ico|robots.txt|sitemap.xml).*)',
