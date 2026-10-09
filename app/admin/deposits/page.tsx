@@ -6,9 +6,6 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { RefreshIcon } from '@/components/icons';
 
-// ==========================================
-// TYPES
-// ==========================================
 interface AdminDeposit {
   id: string;
   user_id: string;
@@ -17,12 +14,12 @@ interface AdminDeposit {
   amount: number;
   status: string;
   reference: string | null;
+  network: string | null;
+  sender_phone: string | null;
+  transaction_id: string | null;
   created_at: string;
 }
 
-// ==========================================
-// HELPERS
-// ==========================================
 function statusPillClass(status: string): string {
   const s = (status || '').toLowerCase();
   if (s === 'approved' || s === 'successful' || s === 'completed')
@@ -47,9 +44,6 @@ function formatDate(iso: string): string {
   }
 }
 
-// ==========================================
-// PAGE
-// ==========================================
 export default function AdminDepositsPage() {
   const router = useRouter();
   const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
@@ -59,6 +53,7 @@ export default function AdminDepositsPage() {
     'pending' | 'approved' | 'rejected' | 'all'
   >('pending');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<AdminDeposit | null>(null);
 
   async function load(showSpinner = false) {
     if (showSpinner) setRefreshing(true);
@@ -116,6 +111,7 @@ export default function AdminDepositsPage() {
 
       toast.success(data.message || 'Done');
       setProcessingId(null);
+      setReviewing(null);
       load(true);
     } catch {
       toast.error('Network error');
@@ -134,7 +130,7 @@ export default function AdminDepositsPage() {
             >
               ← Dashboard
             </Link>
-            <h1 className="text-lg font-bold text-white leading-tight">
+            <h1 className="text-lg font-bold text-foreground leading-tight">
               Deposits
             </h1>
           </div>
@@ -150,7 +146,6 @@ export default function AdminDepositsPage() {
       </header>
 
       <main className="max-w-2xl mx-auto w-full px-5 py-5 pb-16">
-        {/* Filter tabs */}
         <div className="grid grid-cols-4 gap-2 mb-5">
           {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => {
             const isActive = filter === f;
@@ -160,7 +155,7 @@ export default function AdminDepositsPage() {
                 onClick={() => setFilter(f)}
                 className={`py-2.5 rounded-full text-xs font-semibold capitalize transition ${
                   isActive
-                    ? 'bg-primary text-black'
+                    ? 'bg-primary text-[#FFFFFF]'
                     : 'bg-card border border-border text-muted'
                 }`}
               >
@@ -185,21 +180,34 @@ export default function AdminDepositsPage() {
             {deposits.map((d) => {
               const isPending = d.status === 'pending';
               const isProcessing = processingId === d.id;
+              const hasTxid = !!d.transaction_id;
 
               return (
                 <div key={d.id} className="card">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm truncate">
+                      <p className="text-foreground font-semibold text-sm truncate">
                         {d.user_name}
                       </p>
                       <p className="text-muted text-xs mt-0.5">
                         {d.user_phone}
                       </p>
                     </div>
-                    <span className={statusPillClass(d.status)}>
-                      {d.status.toUpperCase()}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={statusPillClass(d.status)}>
+                        {d.status.toUpperCase()}
+                      </span>
+                      {isPending && hasTxid && (
+                        <span className="pill-primary text-[10px]">
+                          TXID SUBMITTED
+                        </span>
+                      )}
+                      {isPending && !hasTxid && (
+                        <span className="pill-muted text-[10px]">
+                          AWAITING TXID
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="row">
@@ -208,10 +216,32 @@ export default function AdminDepositsPage() {
                       {d.amount.toLocaleString()} UGX
                     </span>
                   </div>
+                  {d.network && (
+                    <div className="row">
+                      <span className="row-label">Network</span>
+                      <span className="row-value text-xs">{d.network}</span>
+                    </div>
+                  )}
+                  {d.sender_phone && (
+                    <div className="row">
+                      <span className="row-label">Sender Phone</span>
+                      <span className="row-value text-xs">
+                        {d.sender_phone}
+                      </span>
+                    </div>
+                  )}
+                  {d.transaction_id && (
+                    <div className="row">
+                      <span className="row-label">Transaction ID</span>
+                      <span className="row-value text-xs font-mono">
+                        {d.transaction_id}
+                      </span>
+                    </div>
+                  )}
                   {d.reference && (
                     <div className="row">
                       <span className="row-label">Reference</span>
-                      <span className="row-value text-xs break-all">
+                      <span className="row-value text-[10px] font-mono break-all">
                         {d.reference}
                       </span>
                     </div>
@@ -224,20 +254,12 @@ export default function AdminDepositsPage() {
                   </div>
 
                   {isPending && (
-                    <div className="grid grid-cols-2 gap-2 mt-4">
+                    <div className="mt-4">
                       <button
-                        onClick={() => handleAction(d.id, 'reject')}
-                        disabled={isProcessing}
-                        className="py-3 rounded-full bg-danger/10 text-danger text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+                        onClick={() => setReviewing(d)}
+                        className="w-full py-3 rounded-full bg-card border border-border text-foreground text-sm font-semibold active:scale-95 transition mb-2"
                       >
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => handleAction(d.id, 'approve')}
-                        disabled={isProcessing}
-                        className="py-3 rounded-full bg-success text-black text-sm font-semibold active:scale-95 transition disabled:opacity-50"
-                      >
-                        {isProcessing ? '...' : 'Approve'}
+                        View Full Details
                       </button>
                     </div>
                   )}
@@ -247,6 +269,97 @@ export default function AdminDepositsPage() {
           </div>
         )}
       </main>
+
+      {reviewing && (
+        <ReviewDepositModal
+          deposit={reviewing}
+          processing={processingId === reviewing.id}
+          onClose={() => setReviewing(null)}
+          onApprove={() => handleAction(reviewing.id, 'approve')}
+          onReject={() => handleAction(reviewing.id, 'reject')}
+        />
+      )}
     </div>
   );
-  }
+}
+
+function ReviewDepositModal({
+  deposit,
+  processing,
+  onClose,
+  onApprove,
+  onReject,
+}: {
+  deposit: AdminDeposit;
+  processing: boolean;
+  onClose: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="modal-title">Review Deposit</h3>
+
+        <div className="card-flat mb-3">
+          <p className="text-foreground font-semibold">{deposit.user_name}</p>
+          <p className="text-muted text-xs mt-0.5">{deposit.user_phone}</p>
+        </div>
+
+        <div className="card-flat mb-3">
+          <div className="row">
+            <span className="row-label">Amount</span>
+            <span className="row-value text-primary font-bold">
+              {deposit.amount.toLocaleString()} UGX
+            </span>
+          </div>
+          <div className="row">
+            <span className="row-label">Network</span>
+            <span className="row-value">{deposit.network || '—'}</span>
+          </div>
+          <div className="row">
+            <span className="row-label">Sender Phone</span>
+            <span className="row-value">{deposit.sender_phone || '—'}</span>
+          </div>
+          <div className="row">
+            <span className="row-label">Transaction ID</span>
+            <span className="row-value font-mono text-xs">
+              {deposit.transaction_id || 'Not submitted yet'}
+            </span>
+          </div>
+          <div className="row">
+            <span className="row-label">Reference</span>
+            <span className="row-value font-mono text-[10px] break-all">
+              {deposit.reference || '—'}
+            </span>
+          </div>
+        </div>
+
+        <div className="modal-note mb-4">
+          Verify the transaction ID against the mobile money record before
+          approving. Approving will credit the user's balance.
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onReject}
+            disabled={processing}
+            className="py-3 rounded-full bg-danger/10 text-danger text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+          >
+            Reject
+          </button>
+          <button
+            onClick={onApprove}
+            disabled={processing || !deposit.transaction_id}
+            className="py-3 rounded-full bg-success text-[#FFFFFF] text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+          >
+            {processing ? '...' : 'Approve'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+        }
