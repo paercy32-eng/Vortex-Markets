@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { CloseIcon } from '@/components/icons';
 
-// ==========================================
-// TYPES
-// ==========================================
 interface Product {
   id: string;
   name: string;
@@ -18,12 +15,10 @@ interface Product {
   daily_return: number;
   total_return: number;
   group_label: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
-// ==========================================
-// PAGE
-// ==========================================
 export default function ModulesPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,13 +62,24 @@ export default function ModulesPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Modules</h1>
-        <p className="text-muted text-sm">
-          Pick a module and start earning daily.
+      {/* SANDBOX BANNER */}
+      <div className="mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30">
+        <p className="text-warning text-[11px] font-bold uppercase tracking-wide mb-0.5">
+          Sandbox Mode
+        </p>
+        <p className="text-warning/80 text-[11px]">
+          Demo only. No real money is used anywhere in this app.
         </p>
       </div>
 
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Modules</h1>
+        <p className="text-muted text-sm">
+          Pick a module and simulate the full flow.
+        </p>
+      </div>
+
+      {/* Group tabs */}
       <div className="grid grid-cols-3 gap-2 mb-5">
         {GROUPS.map((g) => {
           const isActive = activeGroup === g.days;
@@ -83,7 +89,7 @@ export default function ModulesPage() {
               onClick={() => setActiveGroup(g.days)}
               className={`py-2.5 rounded-full text-xs font-semibold transition ${
                 isActive
-                  ? 'bg-primary text-black'
+                  ? 'bg-primary text-[#FFFFFF]'
                   : 'bg-card border border-border text-muted'
               }`}
             >
@@ -99,56 +105,92 @@ export default function ModulesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-12">
-          <p className="text-muted text-sm">No products in this group.</p>
+          <p className="text-muted text-sm">No modules in this group.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {filtered.map((product) => (
             <button
               key={product.id}
-              className="card text-left transition active:scale-[0.98]"
               onClick={() => setSelected(product)}
+              className="rounded-2xl overflow-hidden border border-border bg-card shadow-sm text-left transition active:scale-[0.98]"
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <h3 className="text-white font-semibold text-base flex-1 min-w-0">
-                  {product.name}
-                </h3>
-                <span className="pill-primary shrink-0">
-                  {product.cycle_days} Days
+              {/* Image */}
+              <div className="relative w-full h-40 bg-gray-100">
+                {product.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-muted text-xs">No image</span>
+                  </div>
+                )}
+                <span className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 text-[#FFFFFF] text-[10px] font-bold tracking-wide">
+                  DEMO
                 </span>
               </div>
 
-              <div className="row">
-                <span className="row-label">Price</span>
-                <span className="row-value">
-                  {product.price.toLocaleString()} UGX
-                </span>
-              </div>
-              <div className="row">
-                <span className="row-label">Daily Return</span>
-                <span className="row-value text-primary">
-                  {product.daily_return.toLocaleString()} UGX
-                </span>
-              </div>
-              <div className="row">
-                <span className="row-label">Total Return</span>
-                <span className="row-value text-success">
-                  {product.total_return.toLocaleString()} UGX
-                </span>
+              {/* Body */}
+              <div className="p-4">
+                <h3 className="text-foreground font-bold text-lg mb-3">
+                  {product.name}
+                </h3>
+
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <p className="text-muted text-[11px] uppercase tracking-wide mb-0.5">
+                      Cost
+                    </p>
+                    <p className="text-foreground font-bold text-sm">
+                      UGX {product.price.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted text-[11px] uppercase tracking-wide mb-0.5">
+                      Term
+                    </p>
+                    <p className="text-foreground font-bold text-sm">
+                      {product.cycle_days} Days
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted text-[11px] uppercase tracking-wide mb-0.5">
+                      Daily Return
+                    </p>
+                    <p className="text-foreground font-bold text-sm">
+                      UGX {product.daily_return.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted text-[11px] uppercase tracking-wide mb-0.5">
+                      Expected Return
+                    </p>
+                    <p className="text-foreground font-bold text-sm">
+                      UGX {product.total_return.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full py-3 rounded-full bg-primary text-[#FFFFFF] text-center text-sm font-semibold">
+                  View Details
+                </div>
               </div>
             </button>
           ))}
         </div>
       )}
 
-      {/* Purchase modal */}
       {selected && (
         <PurchaseModal
           product={selected}
           onClose={() => setSelected(null)}
           onSuccess={() => {
             setSelected(null);
-            toast.success('Module purchased!');
+            toast.success('Sandbox purchase complete');
             router.push('/my-modules');
           }}
         />
@@ -157,9 +199,6 @@ export default function ModulesPage() {
   );
 }
 
-// ==========================================
-// PURCHASE MODAL
-// ==========================================
 function PurchaseModal({
   product,
   onClose,
@@ -208,38 +247,41 @@ function PurchaseModal({
           </button>
         </div>
 
+        <div className="mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30">
+          <p className="text-warning text-[11px] font-bold uppercase">
+            Sandbox Mode
+          </p>
+          <p className="text-warning/80 text-[11px] mt-0.5">
+            This purchase uses test UGX only. No real money is involved.
+          </p>
+        </div>
+
         <div className="card-flat mb-4">
-          <h4 className="text-white font-semibold text-lg mb-3">
+          <h4 className="text-foreground font-semibold text-base mb-3">
             {product.name}
           </h4>
           <div className="row">
-            <span className="row-label">Price</span>
+            <span className="row-label">Cost</span>
             <span className="row-value">
-              {product.price.toLocaleString()} UGX
+              UGX {product.price.toLocaleString()}
             </span>
           </div>
           <div className="row">
-            <span className="row-label">Cycle</span>
+            <span className="row-label">Term</span>
             <span className="row-value">{product.cycle_days} Days</span>
           </div>
           <div className="row">
             <span className="row-label">Daily Return</span>
             <span className="row-value text-primary">
-              {product.daily_return.toLocaleString()} UGX
+              UGX {product.daily_return.toLocaleString()}
             </span>
           </div>
           <div className="row">
-            <span className="row-label">Total Return</span>
-            <span className="row-value text-success">
-              {product.total_return.toLocaleString()} UGX
+            <span className="row-label">Expected Return</span>
+            <span className="row-value text-primary">
+              UGX {product.total_return.toLocaleString()}
             </span>
           </div>
-        </div>
-
-        <div className="modal-note mb-4">
-          {product.price.toLocaleString()} UGX will be deducted from your
-          balance. Daily returns are credited at 00:30 EAT for{' '}
-          {product.cycle_days} days.
         </div>
 
         <button
@@ -249,7 +291,7 @@ function PurchaseModal({
         >
           {loading
             ? 'Processing...'
-            : `Buy for ${product.price.toLocaleString()} UGX`}
+            : `Buy (Demo) — ${product.price.toLocaleString()} UGX`}
         </button>
       </div>
     </div>
