@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     // FORM SUBMISSION → redirect
     // ==========================================
     if (isForm) {
-      const res = NextResponse.redirect(new URL('/modules', req.url));
+  const res = NextResponse.redirect(new URL('/modules', req.url), 303);
       res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
       return res;
     }
