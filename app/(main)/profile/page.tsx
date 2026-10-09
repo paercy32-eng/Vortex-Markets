@@ -831,11 +831,42 @@ function BindModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [phone, setPhone] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [editing, setEditing] = useState(!alreadyBound);
+  const [phone, setPhone] = useState(boundPhone || '');
+  const [fullName, setFullName] = useState(boundName || '');
   const [loading, setLoading] = useState(false);
 
-  if (alreadyBound) {
+  async function submit() {
+    if (!phone || !fullName) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/profile/bind?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ phone, fullName }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Could not save');
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data.message || 'Saved');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  // --- Read-only view (bound + not editing) ---
+  if (alreadyBound && !editing) {
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div
@@ -856,13 +887,80 @@ function BindModal({
             <p className="text-muted text-xs uppercase mb-1">Phone</p>
             <p className="text-foreground font-medium">{boundPhone || '-'}</p>
           </div>
-          <div className="modal-note">
-            To change these details, please contact support.
-          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="btn-primary w-full mb-2"
+          >
+            Change Bound Account
+          </button>
+          <p className="text-muted text-xs text-center">
+            You can only change this when you have no pending withdrawal.
+          </p>
         </div>
       </div>
     );
   }
+
+  // --- Edit form ---
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">
+            {alreadyBound ? 'Change Bound Account' : 'Bind Account'}
+          </h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="modal-note mb-4">
+          These details are used for withdrawals. Make sure the name matches
+          your registered mobile money name.
+        </div>
+
+        <label className="input-label">Full Registered Name</label>
+        <input
+          type="text"
+          className="input mb-4"
+          placeholder="e.g. John Doe"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+
+        <label className="input-label">Mobile Money Number</label>
+        <input
+          type="tel"
+          className="input mb-4"
+          placeholder="0700123456"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          inputMode="tel"
+        />
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Saving...' : alreadyBound ? 'Save Changes' : 'Bind Account'}
+        </button>
+
+        {alreadyBound && (
+          <button
+            onClick={() => setEditing(false)}
+            className="w-full text-muted text-xs mt-3 py-2"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
   async function submit() {
     if (!phone || !fullName) {
