@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
 
   function failRedirect(msg: string) {
     return NextResponse.redirect(
-      new URL('/register?error=' + encodeURIComponent(msg), req.url)
+      new URL('/register?error=' + encodeURIComponent(msg), req.url),
+      303
     );
   }
 
@@ -66,17 +67,22 @@ export async function POST(req: NextRequest) {
       referralCode = body.referralCode || '';
     }
 
-    // --- Validate ---
     if (!name || name.trim().length < 2) {
       return isForm
         ? failRedirect('Please enter your full name')
-        : NextResponse.json({ error: 'Please enter your full name' }, { status: 400 });
+        : NextResponse.json(
+            { error: 'Please enter your full name' },
+            { status: 400 }
+          );
     }
 
     if (!rawPhone) {
       return isForm
         ? failRedirect('Phone number is required')
-        : NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
+        : NextResponse.json(
+            { error: 'Phone number is required' },
+            { status: 400 }
+          );
     }
 
     const phone = normalizePhone(rawPhone);
@@ -84,19 +90,28 @@ export async function POST(req: NextRequest) {
     if (!isValidPhone(phone)) {
       return isForm
         ? failRedirect('Enter a valid Ugandan phone number')
-        : NextResponse.json({ error: 'Enter a valid Ugandan phone number' }, { status: 400 });
+        : NextResponse.json(
+            { error: 'Enter a valid Ugandan phone number' },
+            { status: 400 }
+          );
     }
 
     if (!password || password.length < 6) {
       return isForm
         ? failRedirect('Password must be at least 6 characters')
-        : NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+        : NextResponse.json(
+            { error: 'Password must be at least 6 characters' },
+            { status: 400 }
+          );
     }
 
     if (password !== confirmPassword) {
       return isForm
         ? failRedirect('Passwords do not match')
-        : NextResponse.json({ error: 'Passwords do not match' }, { status: 400 });
+        : NextResponse.json(
+            { error: 'Passwords do not match' },
+            { status: 400 }
+          );
     }
 
     const supabase = getServiceClient();
@@ -110,7 +125,10 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return isForm
         ? failRedirect('This phone number is already registered')
-        : NextResponse.json({ error: 'This phone number is already registered' }, { status: 409 });
+        : NextResponse.json(
+            { error: 'This phone number is already registered' },
+            { status: 409 }
+          );
     }
 
     let referrerId: string | null = null;
@@ -154,7 +172,10 @@ export async function POST(req: NextRequest) {
       console.error('Register insert error:', insertErr);
       return isForm
         ? failRedirect('Could not create account')
-        : NextResponse.json({ error: 'Could not create account' }, { status: 500 });
+        : NextResponse.json(
+            { error: 'Could not create account' },
+            { status: 500 }
+          );
     }
 
     await supabase.from('transactions').insert({
@@ -206,14 +227,21 @@ export async function POST(req: NextRequest) {
 
     const token = signUserToken({ userId: newUser.id, phone: newUser.phone });
 
-    // --- Form submission → redirect ---
+    // ==========================================
+    // FORM SUBMISSION → 303 redirect to GET /modules
+    // ==========================================
     if (isForm) {
-  const res = NextResponse.redirect(new URL('/modules', req.url), 303);
+      const res = NextResponse.redirect(
+        new URL('/modules', req.url),
+        303
+      );
       res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
       return res;
     }
 
-    // --- JSON response ---
+    // ==========================================
+    // JSON SUBMISSION
+    // ==========================================
     const res = NextResponse.json({
       success: true,
       user: {
@@ -231,6 +259,9 @@ export async function POST(req: NextRequest) {
     console.error('Register error:', err);
     return isForm
       ? failRedirect('Something went wrong')
-      : NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+      : NextResponse.json(
+          { error: 'Something went wrong' },
+          { status: 500 }
+        );
   }
-}
+          }
