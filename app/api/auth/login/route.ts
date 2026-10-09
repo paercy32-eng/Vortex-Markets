@@ -43,7 +43,11 @@ export async function POST(req: NextRequest) {
     if (!rawPhone || !password) {
       if (isForm) {
         return NextResponse.redirect(
-          new URL('/login?error=' + encodeURIComponent('Enter phone and password'), req.url)
+          new URL(
+            '/login?error=' + encodeURIComponent('Enter phone and password'),
+            req.url
+          ),
+          303
         );
       }
       return NextResponse.json(
@@ -57,7 +61,11 @@ export async function POST(req: NextRequest) {
     if (!isValidPhone(phone)) {
       if (isForm) {
         return NextResponse.redirect(
-          new URL('/login?error=' + encodeURIComponent('Invalid phone number'), req.url)
+          new URL(
+            '/login?error=' + encodeURIComponent('Invalid phone number'),
+            req.url
+          ),
+          303
         );
       }
       return NextResponse.json(
@@ -70,14 +78,21 @@ export async function POST(req: NextRequest) {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, name, phone, password_hash, referral_code, balance, is_banned')
+      .select(
+        'id, name, phone, password_hash, referral_code, balance, is_banned'
+      )
       .eq('phone', phone)
       .maybeSingle();
 
     if (!user) {
       if (isForm) {
         return NextResponse.redirect(
-          new URL('/login?error=' + encodeURIComponent('Invalid phone or password'), req.url)
+          new URL(
+            '/login?error=' +
+              encodeURIComponent('Invalid phone or password'),
+            req.url
+          ),
+          303
         );
       }
       return NextResponse.json(
@@ -86,15 +101,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Check ban BEFORE verifying password to save compute ---
-    // (Still return generic message to avoid leaking account status on wrong password,
-    //  but if password is correct and user is banned, give a clear message.)
     const passwordOk = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordOk) {
       if (isForm) {
         return NextResponse.redirect(
-          new URL('/login?error=' + encodeURIComponent('Invalid phone or password'), req.url)
+          new URL(
+            '/login?error=' +
+              encodeURIComponent('Invalid phone or password'),
+            req.url
+          ),
+          303
         );
       }
       return NextResponse.json(
@@ -103,11 +120,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Password correct, now check ban ---
     if (user.is_banned) {
       if (isForm) {
         return NextResponse.redirect(
-          new URL('/login?error=' + encodeURIComponent('Account suspended. Contact support.'), req.url)
+          new URL(
+            '/login?error=' +
+              encodeURIComponent('Account suspended. Contact support.'),
+            req.url
+          ),
+          303
         );
       }
       return NextResponse.json(
@@ -119,10 +140,13 @@ export async function POST(req: NextRequest) {
     const token = signUserToken({ userId: user.id, phone: user.phone });
 
     // ==========================================
-    // FORM SUBMISSION → redirect
+    // FORM SUBMISSION → 303 redirect to GET /modules
     // ==========================================
     if (isForm) {
-  const res = NextResponse.redirect(new URL('/modules', req.url), 303);
+      const res = NextResponse.redirect(
+        new URL('/modules', req.url),
+        303
+      );
       res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
       return res;
     }
@@ -147,9 +171,16 @@ export async function POST(req: NextRequest) {
     console.error('Login error:', err);
     if (isForm) {
       return NextResponse.redirect(
-        new URL('/login?error=' + encodeURIComponent('Something went wrong'), req.url)
+        new URL(
+          '/login?error=' + encodeURIComponent('Something went wrong'),
+          req.url
+        ),
+        303
       );
     }
-    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Something went wrong' },
+      { status: 500 }
+    );
   }
-          }
+}
