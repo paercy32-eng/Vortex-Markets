@@ -10,9 +10,10 @@ export const fetchCache = 'force-no-store';
 // PATCH /api/admin/withdrawals/[id]
 // Body: { action: 'approve' | 'reject' }
 //
-// - approve: deducts the amount from the user's balance,
-//            marks the withdrawal as 'approved'
-// - reject:  marks the withdrawal as 'rejected', balance untouched
+// Balance was already deducted when the user
+// submitted the request. So:
+//   - approve: no balance change (already deducted)
+//   - reject:  refund the amount back
 // ==========================================
 export async function PATCH(
   req: NextRequest,
@@ -20,7 +21,6 @@ export async function PATCH(
 ) {
   try {
     const admin = await getCurrentAdmin();
-
     if (!admin) {
       return NextResponse.json(
         { error: 'Not authenticated as admin' },
@@ -48,10 +48,11 @@ export async function PATCH(
 
     const supabase = getServiceClient();
 
-    // --- Fetch the withdrawal ---
     const { data: withdrawal } = await supabase
       .from('withdrawals')
-      .select('id, user_id, amount, status, recipient_name, recipient_phone')
+      .select(
+        'id, user_id, amount, status, recipient_name, recipient_phone'
+      )
       .eq('id', withdrawalId)
       .maybeSingle();
 
@@ -62,7 +63,6 @@ export async function PATCH(
       );
     }
 
-    // --- Must still be pending (prevents double-processing) ---
     if (withdrawal.status !== 'pending') {
       return NextResponse.json(
         { error: `This withdrawal is already ${withdrawal.status}` },
@@ -73,73 +73,56 @@ export async function PATCH(
     const amount = Number(withdrawal.amount) || 0;
 
     // ==========================================
-    // REJECT
+    // APPROVE — balance was already deducted
     // ==========================================
-    if (action === 'reject') {
+    if (action === 'approve') {
       const { error: updErr } = await supabase
         .from('withdrawals')
-        .update({ status: 'rejected' })
+        .update({ status: 'approved' })
         .eq('id', withdrawalId)
-        .eq('status', 'pending'); // safety lock
+        .eq('status', 'pending');
 
       if (updErr) {
-        console.error('Withdrawal reject error:', updErr);
+        console.error('Withdrawal approve error:', updErr);
         return NextResponse.json(
-          { error: 'Could not reject withdrawal' },
+          { error: 'Could not approve withdrawal' },
           { status: 500 }
         );
       }
 
-      // Log a transaction for audit trail
       await supabase.from('transactions').insert({
         user_id: withdrawal.user_id,
-        type: 'withdrawal_rejected',
+        type: 'withdrawal_approved',
         amount: 0,
         status: 'completed',
         meta: {
           withdrawal_id: withdrawal.id,
-          attempted_amount: amount,
+          paid_amount: amount,
+          recipient_name: withdrawal.recipient_name,
+          recipient_phone: withdrawal.recipient_phone,
           admin_id: admin.adminId,
+          note: 'Paid out. Balance already deducted on submit.',
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: 'Withdrawal rejected',
-        status: 'rejected',
+        message: 'Withdrawal approved',
+        status: 'approved',
       });
     }
 
     // ==========================================
-    // APPROVE
+    // REJECT — refund the amount back
     // ==========================================
-    // Re-fetch user's fresh balance (they may have spent it since requesting)
-    const { data: user } = await supabase
+    const { data: freshUser } = await supabase
       .from('users')
       .select('balance')
       .eq('id', withdrawal.user_id)
       .single();
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    const currentBalance = Number(user.balance) || 0;
-
-    if (currentBalance < amount) {
-      return NextResponse.json(
-        {
-          error: `User's current balance (${currentBalance.toLocaleString()} UGX) is less than the withdrawal amount (${amount.toLocaleString()} UGX). Cannot approve.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // --- Deduct balance ---
-    const newBalance = currentBalance - amount;
+    const currentBalance = Number(freshUser?.balance) || 0;
+    const newBalance = currentBalance + amount;
 
     const { error: balErr } = await supabase
       .from('users')
@@ -147,52 +130,49 @@ export async function PATCH(
       .eq('id', withdrawal.user_id);
 
     if (balErr) {
-      console.error('Balance deduct error:', balErr);
+      console.error('Refund balance error:', balErr);
       return NextResponse.json(
-        { error: 'Could not deduct balance' },
+        { error: 'Could not refund balance' },
         { status: 500 }
       );
     }
 
-    // --- Mark withdrawal as approved ---
     const { error: updErr } = await supabase
       .from('withdrawals')
-      .update({ status: 'approved' })
+      .update({ status: 'rejected' })
       .eq('id', withdrawalId)
-      .eq('status', 'pending'); // safety lock
+      .eq('status', 'pending');
 
     if (updErr) {
-      // Rollback balance
+      // Rollback refund
       await supabase
         .from('users')
         .update({ balance: currentBalance })
         .eq('id', withdrawal.user_id);
 
-      console.error('Withdrawal approve error:', updErr);
+      console.error('Withdrawal reject error:', updErr);
       return NextResponse.json(
-        { error: 'Could not approve withdrawal' },
+        { error: 'Could not reject withdrawal' },
         { status: 500 }
       );
     }
 
-    // --- Log a transaction ---
     await supabase.from('transactions').insert({
       user_id: withdrawal.user_id,
-      type: 'withdrawal_approved',
-      amount: -amount,
+      type: 'withdrawal_rejected',
+      amount,
       status: 'completed',
       meta: {
         withdrawal_id: withdrawal.id,
-        recipient_name: withdrawal.recipient_name,
-        recipient_phone: withdrawal.recipient_phone,
         admin_id: admin.adminId,
+        note: 'Refunded to user balance',
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Withdrawal approved and balance deducted',
-      status: 'approved',
+      message: 'Withdrawal rejected and refunded',
+      status: 'rejected',
       newBalance,
     });
   } catch (err: any) {
@@ -202,4 +182,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+      }
