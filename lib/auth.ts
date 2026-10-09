@@ -9,9 +9,6 @@ import {
   type AdminTokenPayload,
 } from './jwt';
 
-// ==========================================
-// USER SHAPE (returned from DB)
-// ==========================================
 export interface FullUser {
   id: string;
   name: string;
@@ -22,15 +19,10 @@ export interface FullUser {
   is_bound: boolean;
   bound_phone: string | null;
   bound_full_name: string | null;
+  is_banned: boolean;
   created_at: string;
 }
 
-// ==========================================
-// GET CURRENT USER (for API routes)
-// Reads the user JWT cookie, verifies it,
-// then fetches the fresh user row from DB.
-// Returns null if not authenticated or user missing.
-// ==========================================
 export async function getCurrentUser(): Promise<FullUser | null> {
   try {
     const cookieStore = cookies();
@@ -45,12 +37,15 @@ export async function getCurrentUser(): Promise<FullUser | null> {
     const { data, error } = await supabase
       .from('users')
       .select(
-        'id, name, phone, balance, referral_code, referred_by, is_bound, bound_phone, bound_full_name, created_at'
+        'id, name, phone, balance, referral_code, referred_by, is_bound, bound_phone, bound_full_name, is_banned, created_at'
       )
       .eq('id', payload.userId)
       .maybeSingle();
 
     if (error || !data) return null;
+
+    // --- Banned users are treated as logged out everywhere ---
+    if (data.is_banned) return null;
 
     return {
       ...data,
@@ -61,9 +56,6 @@ export async function getCurrentUser(): Promise<FullUser | null> {
   }
 }
 
-// ==========================================
-// GET CURRENT ADMIN (for admin API routes)
-// ==========================================
 export async function getCurrentAdmin(): Promise<AdminTokenPayload | null> {
   try {
     const cookieStore = cookies();
@@ -74,7 +66,6 @@ export async function getCurrentAdmin(): Promise<AdminTokenPayload | null> {
     const payload = verifyAdminToken(token);
     if (!payload) return null;
 
-    // Verify the admin still exists in DB (in case they were removed)
     const supabase = getServiceClient();
     const { data, error } = await supabase
       .from('admins')
@@ -95,10 +86,6 @@ export async function getCurrentAdmin(): Promise<AdminTokenPayload | null> {
   }
 }
 
-// ==========================================
-// REQUIRE USER (throws 401 if not logged in)
-// Use this inside API routes for brevity.
-// ==========================================
 export async function requireUser(): Promise<FullUser> {
   const user = await getCurrentUser();
   if (!user) {
@@ -107,9 +94,6 @@ export async function requireUser(): Promise<FullUser> {
   return user;
 }
 
-// ==========================================
-// REQUIRE ADMIN (throws 401 if not admin)
-// ==========================================
 export async function requireAdmin(): Promise<AdminTokenPayload> {
   const admin = await getCurrentAdmin();
   if (!admin) {
@@ -118,9 +102,6 @@ export async function requireAdmin(): Promise<AdminTokenPayload> {
   return admin;
 }
 
-// ==========================================
-// CUSTOM AUTH ERROR
-// ==========================================
 export class AuthError extends Error {
   status = 401;
   constructor(message: string) {
