@@ -5,15 +5,9 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { CloseIcon, ChevronRightIcon } from '@/components/icons';
 
-// ==========================================
-// RULES (must match server)
-// ==========================================
 const MIN_WITHDRAWAL = 4000;
 const WITHDRAWAL_FEE_RATE = 0.15;
 
-// ==========================================
-// TYPES
-// ==========================================
 interface ProfileUser {
   id: string;
   name: string;
@@ -41,9 +35,6 @@ interface Withdrawal {
   created_at: string;
 }
 
-// ==========================================
-// HELPERS
-// ==========================================
 function statusPillClass(status: string): string {
   const s = (status || '').toLowerCase();
   if (s === 'completed' || s === 'approved' || s === 'successful')
@@ -68,9 +59,6 @@ function formatDate(iso: string): string {
   }
 }
 
-// ==========================================
-// PAGE
-// ==========================================
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -146,13 +134,12 @@ export default function ProfilePage() {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Profile</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Profile</h1>
         <p className="text-muted text-sm">Manage your account and wallet.</p>
       </div>
 
-      {/* User card */}
       <div className="card mb-4">
-        <p className="text-white font-semibold text-base">{user.name}</p>
+        <p className="text-foreground font-semibold text-base">{user.name}</p>
         <p className="text-muted text-sm mt-0.5">{user.phone}</p>
         <p className="text-muted text-xs mt-1">
           {user.is_bound
@@ -161,12 +148,11 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      {/* Balance card */}
       <div className="card mb-4">
         <p className="text-muted text-xs uppercase tracking-wide mb-1">
           Balance
         </p>
-        <p className="text-white font-bold text-3xl">
+        <p className="text-foreground font-bold text-3xl">
           {user.balance.toLocaleString()}{' '}
           <span className="text-lg">UGX</span>
         </p>
@@ -193,7 +179,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Menu list */}
       <div className="card mb-4 p-0">
         <button
           onClick={() => setShowGift(true)}
@@ -226,12 +211,21 @@ export default function ProfilePage() {
           <ChevronRightIcon size={18} className="text-muted" />
         </button>
         <a
-          href="https://t.me/"
+          href="https://t.me/+GM_Fo41-HFsxNTc0"
           target="_blank"
           rel="noopener noreferrer"
           className="row w-full px-4"
         >
           <span className="row-label">Join Telegram</span>
+          <ChevronRightIcon size={18} className="text-muted" />
+        </a>
+        <a
+          href="https://whatsapp.com/channel/0029Vb9OlFtKrWR36rpMst0O"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="row w-full px-4"
+        >
+          <span className="row-label">Follow WhatsApp Channel</span>
           <ChevronRightIcon size={18} className="text-muted" />
         </a>
       </div>
@@ -243,7 +237,6 @@ export default function ProfilePage() {
         Sign Out
       </button>
 
-      {/* Modals */}
       {showRecharge && (
         <RechargeModal
           onClose={() => setShowRecharge(false)}
@@ -297,7 +290,7 @@ export default function ProfilePage() {
           {deposits.map((d) => (
             <div key={d.id} className="card mb-2">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-white font-semibold text-sm">
+                <span className="text-foreground font-semibold text-sm">
                   {d.amount.toLocaleString()} UGX
                 </span>
                 <span className={statusPillClass(d.status)}>
@@ -319,7 +312,7 @@ export default function ProfilePage() {
           {withdrawals.map((w) => (
             <div key={w.id} className="card mb-2">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-white font-semibold text-sm">
+                <span className="text-foreground font-semibold text-sm">
                   {w.amount.toLocaleString()} UGX
                 </span>
                 <span className={statusPillClass(w.status)}>
@@ -340,9 +333,6 @@ export default function ProfilePage() {
   );
 }
 
-// ==========================================
-// GIFT CARD MODAL
-// ==========================================
 function GiftCardModal({
   onClose,
   onSuccess,
@@ -424,9 +414,6 @@ function GiftCardModal({
   );
 }
 
-// ==========================================
-// RECHARGE MODAL
-// ==========================================
 function RechargeModal({
   onClose,
   onSuccess,
@@ -522,9 +509,6 @@ function RechargeModal({
   );
 }
 
-// ==========================================
-// WITHDRAW MODAL
-// ==========================================
 function WithdrawModal({
   balance,
   onClose,
@@ -595,7 +579,7 @@ function WithdrawModal({
 
         <div className="card-flat mb-4">
           <p className="text-muted text-xs uppercase mb-1">Available</p>
-          <p className="text-white font-bold text-xl">
+          <p className="text-foreground font-bold text-xl">
             {balance.toLocaleString()} UGX
           </p>
         </div>
@@ -649,9 +633,6 @@ function WithdrawModal({
   );
 }
 
-// ==========================================
-// BIND MODAL
-// ==========================================
 function BindModal({
   alreadyBound,
   boundPhone,
@@ -684,11 +665,11 @@ function BindModal({
           </div>
           <div className="card-flat mb-2">
             <p className="text-muted text-xs uppercase mb-1">Full Name</p>
-            <p className="text-white font-medium">{boundName || '-'}</p>
+            <p className="text-foreground font-medium">{boundName || '-'}</p>
           </div>
           <div className="card-flat mb-4">
             <p className="text-muted text-xs uppercase mb-1">Phone</p>
-            <p className="text-white font-medium">{boundPhone || '-'}</p>
+            <p className="text-foreground font-medium">{boundPhone || '-'}</p>
           </div>
           <div className="modal-note">
             To change these details, please contact support.
@@ -774,9 +755,6 @@ function BindModal({
   );
 }
 
-// ==========================================
-// HISTORY MODAL
-// ==========================================
 function HistoryModal({
   title,
   onClose,
@@ -811,4 +789,4 @@ function HistoryModal({
       </div>
     </div>
   );
-    }
+            }
