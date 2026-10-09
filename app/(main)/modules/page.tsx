@@ -132,7 +132,7 @@ export default function ModulesPage() {
 
               {/* Body */}
               <div className="p-4">
-                {/* 2x2 Grid matching the Adrar Refinery layout */}
+                {/* 2x2 Grid matching the layout */}
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-5">
                   <div>
                     <p className="text-muted text-[11px] uppercase tracking-wide mb-0.5">
@@ -168,9 +168,9 @@ export default function ModulesPage() {
                   </div>
                 </div>
 
-                {/* Red Buy Asset Button */}
+                {/* Red Buy Module Button */}
                 <div className="w-full py-3.5 rounded-xl bg-[#e52b2b] hover:bg-[#c42222] text-white text-center text-sm font-semibold transition-colors">
-                  Buy Asset
+                  Buy Module
                 </div>
               </div>
             </button>
@@ -184,7 +184,7 @@ export default function ModulesPage() {
           onClose={() => setSelected(null)}
           onSuccess={() => {
             setSelected(null);
-            toast.success('Purchase successful!');
+            toast.success('Module purchased successfully!');
             router.push('/my-modules');
           }}
         />
@@ -216,7 +216,7 @@ function PurchaseModal({
       const data = await res.json();
 
       if (!res.ok) {
-        // This is where the backend will reject the purchase if the user
+        // The backend will reject the purchase if the user
         // does not have an approved deposit for their first purchase.
         toast.error(data.error || 'Purchase failed');
         setLoading(false);
@@ -278,9 +278,9 @@ function PurchaseModal({
         >
           {loading
             ? 'Processing...'
-            : `Buy for ${product.price.toLocaleString()} UGX`}
+            : `Buy Module for ${product.price.toLocaleString()} UGX`}
         </button>
       </div>
     </div>
   );
-          }
+}
