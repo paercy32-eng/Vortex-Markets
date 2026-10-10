@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { getCurrentAdmin } from '@/lib/auth';
 import { getServiceClient } from '@/lib/supabase';
 
@@ -6,9 +7,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// GET /api/admin/users/[id]
-// ==========================================
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -73,15 +71,6 @@ export async function GET(
   }
 }
 
-// ==========================================
-// PATCH /api/admin/users/[id]
-// Actions:
-//   - adjust_balance: { amount, reason }
-//   - reset_binding: {}
-//   - ban: {}
-//   - unban: {}
-//   - grant_module: { productId }
-// ==========================================
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -108,6 +97,52 @@ export async function PATCH(
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // ==========================================
+    // CHANGE PASSWORD
+    // ==========================================
+    if (action === 'change_password') {
+      const newPassword =
+        typeof body.newPassword === 'string' ? body.newPassword : '';
+
+      if (!newPassword || newPassword.length < 6) {
+        return NextResponse.json(
+          { error: 'Password must be at least 6 characters' },
+          { status: 400 }
+        );
+      }
+
+      const password_hash = await bcrypt.hash(newPassword, 10);
+
+      const { error: updErr } = await supabase
+        .from('users')
+        .update({ password_hash })
+        .eq('id', userId);
+
+      if (updErr) {
+        console.error('Change password error:', updErr);
+        return NextResponse.json(
+          { error: 'Could not change password' },
+          { status: 500 }
+        );
+      }
+
+      await supabase.from('transactions').insert({
+        user_id: userId,
+        type: 'admin_password_change',
+        amount: 0,
+        status: 'completed',
+        meta: {
+          admin_id: admin.adminId,
+          admin_username: admin.username,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Password updated',
+      });
     }
 
     // ==========================================
@@ -241,7 +276,7 @@ export async function PATCH(
     }
 
     // ==========================================
-    // GRANT MODULE (free — no balance deduction, no referral commission)
+    // GRANT MODULE
     // ==========================================
     if (action === 'grant_module') {
       const productId = body.productId;
@@ -315,4 +350,4 @@ export async function PATCH(
     console.error('Admin user action error:', err);
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
-}
+        }
