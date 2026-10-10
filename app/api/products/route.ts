@@ -5,11 +5,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// GET /api/products
-// Returns all products with earning details.
-// Public endpoint — no auth required.
-// ==========================================
 export async function GET() {
   try {
     const supabase = getServiceClient();
@@ -17,7 +12,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('products')
       .select(
-        'id, name, description, price, category, cycle_days, daily_return, group_label, created_at'
+        'id, name, description, price, category, cycle_days, daily_return, group_label, image_url, created_at'
       )
       .order('cycle_days', { ascending: true })
       .order('price', { ascending: true });
