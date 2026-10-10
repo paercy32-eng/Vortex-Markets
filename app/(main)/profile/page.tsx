@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { CloseIcon, ChevronRightIcon } from '@/components/icons';
 
-const MIN_WITHDRAWAL = 4000;
+const MIN_WITHDRAWAL = 5000;
 const WITHDRAWAL_FEE_RATE = 0.15;
 const MIN_DEPOSIT = 10000;
 const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
+
 
 interface ProfileUser {
   id: string;
@@ -345,9 +346,6 @@ export default function ProfilePage() {
   );
 }
 
-// ==========================================
-// RECHARGE MODAL — multi-step
-// ==========================================
 function RechargeModal({
   onClose,
   onSuccess,
@@ -454,7 +452,6 @@ function RechargeModal({
           </button>
         </div>
 
-        {/* STEP 1: Amount + phone */}
         {step === 1 && (
           <>
             <label className="input-label">Amount (UGX)</label>
@@ -490,7 +487,6 @@ function RechargeModal({
           </>
         )}
 
-        {/* STEP 2: Select network */}
         {step === 2 && (
           <>
             <p className="text-muted text-sm mb-4">
@@ -522,7 +518,6 @@ function RechargeModal({
           </>
         )}
 
-        {/* STEP 3: Merchant code + txid */}
         {step === 3 && (
           <>
             <div className="card-flat mb-4">
@@ -543,7 +538,9 @@ function RechargeModal({
                 How to pay:
               </p>
               <p className="mb-1">
-                Dial <span className="text-primary font-bold">{AIRTEL_USSD}</span> on your Airtel line.
+                In a real app, you would dial{' '}
+                <span className="text-primary font-bold">{AIRTEL_USSD}</span>{' '}
+                (simulated for this school demo).
               </p>
               <p className="mb-1">
                 Choose <strong>Pay Merchant</strong> and enter the code above.
@@ -571,7 +568,6 @@ function RechargeModal({
           </>
         )}
 
-        {/* STEP 4: Success */}
         {step === 4 && (
           <>
             <div className="text-center py-4">
@@ -604,9 +600,6 @@ function RechargeModal({
   );
 }
 
-// ==========================================
-// GIFT CARD MODAL
-// ==========================================
 function GiftCardModal({
   onClose,
   onSuccess,
@@ -688,9 +681,6 @@ function GiftCardModal({
   );
 }
 
-// ==========================================
-// WITHDRAW MODAL
-// ==========================================
 function WithdrawModal({
   balance,
   onClose,
@@ -738,7 +728,7 @@ function WithdrawModal({
         return;
       }
 
-      toast.success(data.message || 'Withdrawal request submitted');
+      toast.success(data.message || 'Withdrawal submitted');
       onSuccess();
     } catch {
       toast.error('Network error');
@@ -800,7 +790,8 @@ function WithdrawModal({
 
         <div className="modal-note mb-4">
           Minimum withdrawal is {MIN_WITHDRAWAL.toLocaleString()} UGX. A 15%
-          fee applies. You must have an active module to withdraw.
+          fee applies. You must have an active module to withdraw. The amount
+          is deducted immediately and refunded if rejected.
         </div>
 
         <button
@@ -815,9 +806,6 @@ function WithdrawModal({
   );
 }
 
-// ==========================================
-// BIND MODAL
-// ==========================================
 function BindModal({
   alreadyBound,
   boundPhone,
@@ -836,10 +824,130 @@ function BindModal({
   const [fullName, setFullName] = useState(boundName || '');
   const [loading, setLoading] = useState(false);
 
+  async function submit() {
+    if (!phone || !fullName) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/profile/bind?t=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ phone, fullName }),
+      });
+      const data = await res.json();
 
-// ==========================================
-// HISTORY MODAL
-// ==========================================
+      if (!res.ok) {
+        toast.error(data.error || 'Could not save');
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data.message || 'Saved');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  if (alreadyBound && !editing) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+          className="modal-content animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="modal-title mb-0">Bound Account</h3>
+            <button onClick={onClose} className="text-muted p-1">
+              <CloseIcon size={20} />
+            </button>
+          </div>
+          <div className="card-flat mb-2">
+            <p className="text-muted text-xs uppercase mb-1">Full Name</p>
+            <p className="text-foreground font-medium">{boundName || '-'}</p>
+          </div>
+          <div className="card-flat mb-4">
+            <p className="text-muted text-xs uppercase mb-1">Phone</p>
+            <p className="text-foreground font-medium">{boundPhone || '-'}</p>
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="btn-primary w-full mb-2"
+          >
+            Change Bound Account
+          </button>
+          <p className="text-muted text-xs text-center">
+            You can only change this when you have no pending withdrawal.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">
+            {alreadyBound ? 'Change Bound Account' : 'Bind Account'}
+          </h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="modal-note mb-4">
+          These details are used for withdrawals. Make sure the name matches
+          your registered mobile money name.
+        </div>
+
+        <label className="input-label">Full Registered Name</label>
+        <input
+          type="text"
+          className="input mb-4"
+          placeholder="e.g. John Doe"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+
+        <label className="input-label">Mobile Money Number</label>
+        <input
+          type="tel"
+          className="input mb-4"
+          placeholder="0700123456"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          inputMode="tel"
+        />
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Saving...' : alreadyBound ? 'Save Changes' : 'Bind Account'}
+        </button>
+
+        {alreadyBound && (
+          <button
+            onClick={() => setEditing(false)}
+            className="w-full text-muted text-xs mt-3 py-2"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HistoryModal({
   title,
   onClose,
@@ -874,4 +982,4 @@ function HistoryModal({
       </div>
     </div>
   );
-                  }
+          }
