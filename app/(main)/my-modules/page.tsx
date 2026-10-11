@@ -77,21 +77,38 @@ export default function MyModulesPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {modules.map((m) => {
-            const progress = (m.days_elapsed / m.cycle_days) * 100;
+          {modules.map((m, index) => {
+            // Defensive: use safe fallbacks for every field
+            const cycleDays = Number(m.cycle_days) || 1;
+            const daysElapsed = Number(m.days_elapsed) || 0;
+            const progress = Math.min((daysElapsed / cycleDays) * 100, 100);
+
+            const safeMoney = (val: any) => {
+              const n = Number(val);
+              return isNaN(n) ? '0' : n.toLocaleString();
+            };
+
+            const safeDate = (val: any) => {
+              if (!val) return '—';
+              try {
+                return new Date(val).toLocaleDateString();
+              } catch {
+                return '—';
+              }
+            };
 
             return (
               <div
-                key={m.id}
+                key={m.id || index}
                 className="bg-[#1E293B] border border-[#334155] rounded-2xl p-5"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-[#F8FAFC] font-bold text-base">
-                    {m.product_name}
+                    {m.product_name || 'Module'}
                   </h3>
                   <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-[#064E3B] text-[#34D399]">
-                    Active
+                    {m.status || 'Active'}
                   </span>
                 </div>
 
@@ -99,7 +116,7 @@ export default function MyModulesPage() {
                 <div className="mb-5">
                   <div className="flex justify-between text-[11px] mb-1.5">
                     <span className="text-[#94A3B8]">
-                      Day {m.days_elapsed} of {m.cycle_days}
+                      Day {daysElapsed} of {cycleDays}
                     </span>
                     <span className="text-[#F8FAFC] font-semibold">
                       {Math.round(progress)}%
@@ -118,33 +135,33 @@ export default function MyModulesPage() {
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
                     <span className="text-xs text-[#94A3B8]">Earned so far</span>
                     <span className="text-sm font-bold text-[#E0A44C]">
-                      {m.earned_so_far.toLocaleString()} UGX
+                      {safeMoney(m.earned_so_far)} UGX
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
                     <span className="text-xs text-[#94A3B8]">Total expected</span>
                     <span className="text-sm font-bold text-[#34D399]">
-                      {m.total_return.toLocaleString()} UGX
+                      {safeMoney(m.total_return)} UGX
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
                     <span className="text-xs text-[#94A3B8]">Daily return</span>
                     <span className="text-sm font-semibold text-[#F8FAFC]">
-                      {m.daily_return.toLocaleString()} UGX
+                      {safeMoney(m.daily_return)} UGX
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs text-[#94A3B8]">Price paid</span>
                     <span className="text-sm font-semibold text-[#F8FAFC]">
-                      {m.price_paid.toLocaleString()} UGX
+                      {safeMoney(m.price_paid)} UGX
                     </span>
                   </div>
                 </div>
 
                 {/* Dates */}
                 <div className="flex justify-between text-[10px] text-[#64748B] mt-4 pt-3 border-t border-[#334155]">
-                  <span>Started: {new Date(m.started_at).toLocaleDateString()}</span>
-                  <span>Expires: {new Date(m.expires_at).toLocaleDateString()}</span>
+                  <span>Started: {safeDate(m.started_at)}</span>
+                  <span>Expires: {safeDate(m.expires_at)}</span>
                 </div>
               </div>
             );
