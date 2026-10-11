@@ -25,19 +25,20 @@ export default function MainLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-30 bg-primary border-b border-primaryDark shadow-sm">
+    <div className="min-h-screen bg-[#0F172A] flex flex-col">
+      {/* Header - Premium Dark */}
+      <header className="sticky top-0 z-30 bg-[#0F172A] border-b border-[#1E293B] shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between px-5 py-3">
           <div className="flex items-center gap-2">
             <Logo size={32} />
-            <span className="text-lg font-bold text-[#FFFFFF]">
+            <span className="text-lg font-bold text-[#F8FAFC]">
               Vortex Markets
             </span>
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 rounded-full text-[#FFFFFF] hover:bg-white/10 transition active:scale-95"
+            className="p-2 rounded-full text-[#F8FAFC] hover:bg-white/10 transition active:scale-95"
             aria-label="Refresh"
           >
             <RefreshIcon
@@ -47,10 +48,12 @@ export default function MainLayout({
         </div>
       </header>
 
+      {/* Main Content - Deep Slate Background */}
       <main className="flex-1 max-w-md mx-auto w-full px-5 pt-4 pb-28">
         {children}
       </main>
 
+      {/* Bottom Navigation */}
       <BottomNav />
     </div>
   );
