@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { hashPassword, signSession, SESSION_COOKIE } from '@/lib/auth';
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'VRTX-'; // Changed to VRTX
+  let code = 'VRTX-';
   for (let i = 0; i < 5; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
@@ -14,7 +14,6 @@ function generateReferralCode(): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    // Name is no longer sent from the frontend
     const { phone, password, confirmPassword, referralCode } = body;
 
     // --- Validation ---
@@ -79,10 +78,10 @@ export async function POST(req: NextRequest) {
     const { data: newUser, error: insertErr } = await supabaseAdmin
       .from('users')
       .insert({
-        name: defaultName, // Using auto-generated name
+        name: defaultName,
         phone: cleanPhone,
         password_hash: passwordHash,
-        balance: 0, // Assuming Vortex Markets starts at 0 instead of 3000
+        balance: 0,
         referral_code: newCode,
         referred_by: referredBy,
       })
@@ -123,4 +122,4 @@ export async function POST(req: NextRequest) {
     console.error('Register error:', err);
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
-  }
+}
