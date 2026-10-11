@@ -12,6 +12,14 @@ function generateReferralCode(): string {
   return code;
 }
 
+// Normalize phone to consistent format: 256XXXXXXXXX (no plus)
+function normalizePhone(input: string): string {
+  let phone = (input || '').replace(/[^\d]/g, '');
+  if (phone.startsWith('0')) phone = '256' + phone.slice(1);
+  if (phone.startsWith('7') && phone.length === 9) phone = '256' + phone;
+  return phone;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -35,11 +43,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
     }
 
-    // --- Check if phone already exists ---
+    // --- Normalize to consistent format ---
+    const normalizedPhone = normalizePhone(cleanPhone);
+
+    // --- Check if phone already exists (checking ALL possible formats) ---
     const { data: existing } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('phone', cleanPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.0${normalizedPhone.slice(3)},phone.eq.+${normalizedPhone}`)
       .maybeSingle();
 
     if (existing) {
@@ -72,15 +83,15 @@ export async function POST(req: NextRequest) {
       newCode = generateReferralCode();
     }
 
-    // --- Auto-generate name since field was removed ---
-    const defaultName = 'User ' + cleanPhone.slice(-4);
+    // --- Auto-generate name ---
+    const defaultName = 'User ' + normalizedPhone.slice(-4);
 
-    // --- Insert user ---
+    // --- Insert user with NORMALIZED phone ---
     const { data: newUser, error: insertErr } = await supabaseAdmin
       .from('users')
       .insert({
         name: defaultName,
-        phone: cleanPhone,
+        phone: normalizedPhone,
         password_hash: passwordHash,
         balance: 0,
         referral_code: newCode,
