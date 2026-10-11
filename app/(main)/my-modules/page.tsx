@@ -6,16 +6,19 @@ import toast from 'react-hot-toast';
 
 interface ActiveModule {
   id: string;
+  product_id: string;
   product_name: string;
   price_paid: number;
-  daily_return: number;
-  total_return: number;
   cycle_days: number;
-  days_elapsed: number;
-  earned_so_far: number;
+  daily_return: number;
+  total_creditable: number;
+  days_credited: number;
+  total_credited: number;
   started_at: string;
   expires_at: string;
+  last_credited_at: string | null;
   status: string;
+  progress: number;
 }
 
 export default function MyModulesPage() {
@@ -78,10 +81,12 @@ export default function MyModulesPage() {
       ) : (
         <div className="space-y-4">
           {modules.map((m, index) => {
-            // Defensive: use safe fallbacks for every field
             const cycleDays = Number(m.cycle_days) || 1;
-            const daysElapsed = Number(m.days_elapsed) || 0;
-            const progress = Math.min((daysElapsed / cycleDays) * 100, 100);
+            const daysCredited = Number(m.days_credited) || 0;
+            const progress = Math.min(
+              Number(m.progress) || (daysCredited / cycleDays) * 100,
+              100
+            );
 
             const safeMoney = (val: any) => {
               const n = Number(val);
@@ -108,7 +113,7 @@ export default function MyModulesPage() {
                     {m.product_name || 'Module'}
                   </h3>
                   <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-[#064E3B] text-[#34D399]">
-                    {m.status || 'Active'}
+                    {m.status || 'active'}
                   </span>
                 </div>
 
@@ -116,7 +121,7 @@ export default function MyModulesPage() {
                 <div className="mb-5">
                   <div className="flex justify-between text-[11px] mb-1.5">
                     <span className="text-[#94A3B8]">
-                      Day {daysElapsed} of {cycleDays}
+                      Day {daysCredited} of {cycleDays}
                     </span>
                     <span className="text-[#F8FAFC] font-semibold">
                       {Math.round(progress)}%
@@ -135,13 +140,13 @@ export default function MyModulesPage() {
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
                     <span className="text-xs text-[#94A3B8]">Earned so far</span>
                     <span className="text-sm font-bold text-[#E0A44C]">
-                      {safeMoney(m.earned_so_far)} UGX
+                      {safeMoney(m.total_credited)} UGX
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
                     <span className="text-xs text-[#94A3B8]">Total expected</span>
                     <span className="text-sm font-bold text-[#34D399]">
-                      {safeMoney(m.total_return)} UGX
+                      {safeMoney(m.total_creditable)} UGX
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-[#334155]">
