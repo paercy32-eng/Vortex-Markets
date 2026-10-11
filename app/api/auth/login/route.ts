@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { signUserToken, USER_COOKIE_NAME, USER_COOKIE_OPTIONS } from '@/lib/jwt';
 import bcrypt from 'bcryptjs';
-import { getServiceClient } from '@/lib/supabase';
-import {
-  signUserToken,
-  USER_COOKIE_NAME,
-  USER_COOKIE_OPTIONS,
-} from '@/lib/jwt';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
+// Normalize phone to consistent format: 256XXXXXXXXX (no plus)
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -18,169 +11,60 @@ function normalizePhone(input: string): string {
   return phone;
 }
 
-function isValidPhone(phone: string): boolean {
-  return /^2567\d{8}$/.test(phone);
-}
-
 export async function POST(req: NextRequest) {
-  const contentType = req.headers.get('content-type') || '';
-  const isForm = contentType.includes('form');
-
   try {
-    let rawPhone = '';
-    let password = '';
+    const body = await req.json();
+    const { phone, password } = body;
 
-    if (isForm) {
-      const formData = await req.formData();
-      rawPhone = String(formData.get('phone') || '');
-      password = String(formData.get('password') || '');
-    } else {
-      const body = await req.json();
-      rawPhone = body.phone;
-      password = body.password;
+    if (!phone || !password) {
+      return NextResponse.json({ error: 'Phone and password are required.' }, { status: 400 });
     }
 
-    if (!rawPhone || !password) {
-      if (isForm) {
-        return NextResponse.redirect(
-          new URL(
-            '/login?error=' + encodeURIComponent('Enter phone and password'),
-            req.url
-          ),
-          303
-        );
-      }
-      return NextResponse.json(
-        { error: 'Phone and password required' },
-        { status: 400 }
-      );
-    }
+    const cleanPhone = phone.trim();
+    const normalizedPhone = normalizePhone(cleanPhone);
 
-    const phone = normalizePhone(rawPhone);
-
-    if (!isValidPhone(phone)) {
-      if (isForm) {
-        return NextResponse.redirect(
-          new URL(
-            '/login?error=' + encodeURIComponent('Invalid phone number'),
-            req.url
-          ),
-          303
-        );
-      }
-      return NextResponse.json(
-        { error: 'Invalid phone number' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getServiceClient();
-
-    const { data: user } = await supabase
+    // --- Look up user with ANY possible phone format ---
+    const { data: user } = await supabaseAdmin
       .from('users')
-      .select(
-        'id, name, phone, password_hash, referral_code, balance, is_banned'
-      )
-      .eq('phone', phone)
+      .select('id, name, phone, password_hash, is_banned')
+      .or(`phone.eq.${normalizedPhone},phone.eq.0${normalizedPhone.slice(3)},phone.eq.+${normalizedPhone}`)
       .maybeSingle();
 
     if (!user) {
-      if (isForm) {
-        return NextResponse.redirect(
-          new URL(
-            '/login?error=' +
-              encodeURIComponent('Invalid phone or password'),
-            req.url
-          ),
-          303
-        );
-      }
-      return NextResponse.json(
-        { error: 'Invalid phone number or password' },
-        { status: 401 }
-      );
-    }
-
-    const passwordOk = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordOk) {
-      if (isForm) {
-        return NextResponse.redirect(
-          new URL(
-            '/login?error=' +
-              encodeURIComponent('Invalid phone or password'),
-            req.url
-          ),
-          303
-        );
-      }
-      return NextResponse.json(
-        { error: 'Invalid phone number or password' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid phone number or password.' }, { status: 401 });
     }
 
     if (user.is_banned) {
-      if (isForm) {
-        return NextResponse.redirect(
-          new URL(
-            '/login?error=' +
-              encodeURIComponent('Account suspended. Contact support.'),
-            req.url
-          ),
-          303
-        );
-      }
-      return NextResponse.json(
-        { error: 'Account suspended. Contact support.' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
     }
 
-    const token = signUserToken({ userId: user.id, phone: user.phone });
+    // --- Verify password ---
+    const passwordMatches = await bcrypt.compare(password, user.password_hash);
 
-    // ==========================================
-    // FORM SUBMISSION → 303 redirect to GET /modules
-    // ==========================================
-    if (isForm) {
-      const res = NextResponse.redirect(
-        new URL('/modules', req.url),
-        303
-      );
-      res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
-      return res;
+    if (!passwordMatches) {
+      return NextResponse.json({ error: 'Invalid phone number or password.' }, { status: 401 });
     }
 
-    // ==========================================
-    // JSON SUBMISSION
-    // ==========================================
+    // --- Create session ---
+    const token = signUserToken({
+      userId: user.id,
+      phone: user.phone,
+    });
+
     const res = NextResponse.json({
       success: true,
       user: {
         id: user.id,
         name: user.name,
         phone: user.phone,
-        referral_code: user.referral_code,
-        balance: Number(user.balance) || 0,
       },
     });
 
     res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
+
     return res;
-  } catch (err: any) {
+  } catch (err) {
     console.error('Login error:', err);
-    if (isForm) {
-      return NextResponse.redirect(
-        new URL(
-          '/login?error=' + encodeURIComponent('Something went wrong'),
-          req.url
-        ),
-        303
-      );
-    }
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
-}
+        }
