@@ -1,158 +1,197 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { LogoWithText } from '@/components/Logo';
+import { Logo } from '@/components/Logo';
 
 function RegisterForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+  
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  // Prefill referral code from URL (?ref=XXXXX)
   useEffect(() => {
     const ref = searchParams.get('ref');
-    if (ref) setReferralCode(ref.toUpperCase());
+    if (ref) {
+      setReferralCode(ref.toUpperCase());
+    }
   }, [searchParams]);
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone,
+          password,
+          confirmPassword,
+          referralCode: referralCode.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Registration failed. Please try again.');
+      } else {
+        router.replace('/modules');
+        router.refresh();
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-background flex flex-col px-6 py-8">
-      <div className="flex justify-center mb-8">
-        <LogoWithText size={64} />
+    <main className="min-h-screen relative flex items-center justify-center px-4 py-8 overflow-hidden bg-[#0F172A]">
+      {/* Decorative Background Glows */}
+      <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-[#C8833A] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
+      <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-[#0EA5E9] rounded-full mix-blend-screen filter blur-[120px] opacity-10"></div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Header */}
+        <div className="mb-6 px-2 text-center">
+          <div className="flex justify-center mb-3">
+            <Logo size={40} />
+          </div>
+          <h1 className="text-2xl font-bold text-[#F8FAFC] mb-1">Create account</h1>
+          <p className="text-[#94A3B8] text-xs">Join Vortex Markets and start accessing our modules.</p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Phone Number */}
+            <div>
+              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="0700123456"
+                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
+                required
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition pr-14 text-sm"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-[10px] font-semibold"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+                Confirm Password
+              </label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your password"
+                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
+                required
+              />
+            </div>
+
+            {/* Referral Code */}
+            <div>
+              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+                Referral Code <span className="text-[#475569] lowercase font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="VRTX-XXXXX"
+                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
+              />
+            </div>
+
+            {error && (
+              <div className="text-xs text-[#F87171] bg-[#450A0A] rounded-xl px-4 py-3 border border-[#7F1D1D]">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 text-sm mt-2"
+            >
+              {loading ? 'Creating account…' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="mt-5 text-center text-xs text-[#94A3B8]">
+            Already have an account?{' '}
+            <Link href="/login" className="text-[#E0A44C] font-bold hover:underline">
+              Sign in
+            </Link>
+          </div>
+        </div>
       </div>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Create account
-        </h1>
-        <p className="text-muted text-sm">
-          Join Vortex Markets and start accessing our modules.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
-          {error}
-        </div>
-      )}
-
-      <form
-        action="/api/auth/register"
-        method="POST"
-        onSubmit={() => setSubmitting(true)}
-        className="flex-1 flex flex-col gap-4"
-      >
-        <div>
-          <label htmlFor="name" className="input-label">
-            Full Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            className="input"
-            placeholder="John Doe"
-            required
-            autoComplete="name"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="input-label">
-            Phone Number
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            className="input"
-            placeholder="0700123456"
-            required
-            autoComplete="username"
-            inputMode="tel"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="input-label">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            className="input"
-            placeholder="At least 6 characters"
-            required
-            autoComplete="new-password"
-            minLength={6}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="confirmPassword" className="input-label">
-            Confirm Password
-          </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            className="input"
-            placeholder="Re-enter your password"
-            required
-            autoComplete="new-password"
-            minLength={6}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="referralCode" className="input-label">
-            Referral Code <span className="text-muted/70">(optional)</span>
-          </label>
-          <input
-            id="referralCode"
-            name="referralCode"
-            type="text"
-            className="input uppercase"
-            placeholder="VRTX-XXXXX"
-            value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-            autoComplete="off"
-          />
-        </div>
-
-        <div className="flex-1" />
-
-        <button
-          type="submit"
-          className="btn-primary w-full"
-          disabled={submitting}
-        >
-          {submitting ? 'Creating account...' : 'Create Account'}
-        </button>
-
-        <p className="text-center text-sm text-muted mt-2">
-          Already have an account?{' '}
-          <Link href="/login" className="text-primary font-semibold">
-            Sign in
-          </Link>
-        </p>
-      </form>
-    </div>
+    </main>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin-slow" />
-        </div>
-      }
-    >
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
+        <div className="w-8 h-8 rounded-full border-2 border-[#C8833A] border-t-transparent animate-spin" />
+      </div>
+    }>
       <RegisterForm />
     </Suspense>
   );
-}
+        }
