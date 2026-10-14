@@ -106,6 +106,7 @@ function transactionLabel(type: string): string {
     admin_unban: 'Account Unbanned',
     admin_granted_module: 'Admin Granted Module',
     binding_reset: 'Binding Reset',
+    password_reset: 'Password Reset',
   };
   return map[type] || type;
 }
@@ -414,6 +415,7 @@ function InfoTab({
   const [showResetBind, setShowResetBind] = useState(false);
   const [showBan, setShowBan] = useState(false);
   const [showGrant, setShowGrant] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   async function runAction(action: string, extra?: Record<string, any>) {
@@ -472,6 +474,20 @@ function InfoTab({
           className="mt-3 w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
         >
           Adjust Balance
+        </button>
+      </div>
+
+      {/* Reset Password */}
+      <div className="card-flat mb-3">
+        <p className="text-muted text-xs uppercase mb-2">Security</p>
+        <p className="text-muted text-xs mb-3">
+          Set a new password for this user. They can log in with it immediately.
+        </p>
+        <button
+          onClick={() => setShowResetPassword(true)}
+          className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+        >
+          Reset Password
         </button>
       </div>
 
@@ -546,6 +562,18 @@ function InfoTab({
           onClose={() => setShowGrant(false)}
           onSuccess={() => {
             setShowGrant(false);
+            onAction();
+          }}
+        />
+      )}
+
+      {showResetPassword && (
+        <ResetPasswordModal
+          userId={user.id}
+          userName={user.name}
+          onClose={() => setShowResetPassword(false)}
+          onSuccess={() => {
+            setShowResetPassword(false);
             onAction();
           }}
         />
@@ -800,6 +828,113 @@ function AdjustBalanceModal({
   );
 }
 
+function ResetPasswordModal({
+  userId,
+  userName,
+  onClose,
+  onSuccess,
+}: {
+  userId: string;
+  userName: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ userId, newPassword }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Reset failed');
+        setLoading(false);
+        return;
+      }
+
+      toast.success('Password reset successfully');
+      onSuccess();
+    } catch {
+      toast.error('Network error');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Reset Password</h3>
+          <button onClick={onClose} className="text-muted p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        <div className="card-flat mb-4">
+          <p className="text-muted text-xs uppercase mb-1">User</p>
+          <p className="text-foreground text-sm font-medium">{userName}</p>
+        </div>
+
+        <label className="input-label">New Password</label>
+        <div className="relative mb-4">
+          <input
+            type={show ? 'text' : 'password'}
+            className="input pr-16"
+            placeholder="At least 6 characters"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShow(!show)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs font-semibold"
+          >
+            {show ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        <label className="input-label">Confirm Password</label>
+        <input
+          type={show ? 'text' : 'password'}
+          className="input mb-4"
+          placeholder="Repeat password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="btn-primary w-full"
+        >
+          {loading ? 'Resetting...' : 'Reset Password'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GrantModuleModal({
   userId,
   products,
@@ -967,4 +1102,4 @@ function ConfirmModal({
       </div>
     </div>
   );
-              }
+}
