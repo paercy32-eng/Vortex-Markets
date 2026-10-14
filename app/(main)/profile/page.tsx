@@ -12,7 +12,7 @@ const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
 
-const TELEGRAM_LINK = 'https://t.me/+Th3b39KdM180YTUy';
+const TELEGRAM_LINK = 'https://t.me/+-sly86QRLz5mOGU0';
 const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
 
 interface ProfileUser {
