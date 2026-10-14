@@ -10,20 +10,13 @@ export const fetchCache = 'force-no-store';
 // REFERRAL COMMISSION RATES
 // ==========================================
 const REFERRAL_RATES: Record<number, number> = {
-  1: 0.20, // Level 1: 20%
+  1: 0.25, // Level 1: 25%
   2: 0.03, // Level 2: 3%
   3: 0.01, // Level 3: 1%
 };
 
 // ==========================================
 // POST /api/purchase
-// Body: { productId: string }
-//
-// 1. Deducts product price from user's balance
-// 2. Creates a user_module (active earning module)
-// 3. Creates an order record
-// 4. Logs a purchase transaction
-// 5. Credits referral commissions to L1/L2/L3 referrers
 // ==========================================
 export async function POST(req: NextRequest) {
   try {
@@ -64,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const price = Number(product.price) || 0;
 
-    // --- Re-fetch user's balance (fresh, in case of concurrent requests) ---
+    // --- Re-fetch user's balance ---
     const { data: freshUser } = await supabase
       .from('users')
       .select('balance')
@@ -79,6 +72,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // --- Check if this is the user's FIRST purchase ---
+    const { count: previousPurchases } = await supabase
+      .from('user_modules')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    const isFirstPurchase = (previousPurchases ?? 0) === 0;
 
     // --- Deduct balance ---
     const newBalance = currentBalance - price;
@@ -159,60 +160,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // --- Process referral commissions (L1: 20%, L2: 3%, L3: 1%) ---
-    const { data: refRows } = await supabase
-      .from('referrals')
-      .select('id, referrer_id, level, earnings')
-      .eq('referred_id', user.id);
-
-    if (refRows && refRows.length > 0) {
-      for (const ref of refRows) {
-        const rate = REFERRAL_RATES[ref.level] || 0;
-        if (rate <= 0) continue;
-
-        // Round to 2 decimals to avoid floating-point noise
-        const commission = Math.round(price * rate * 100) / 100;
-        if (commission <= 0) continue;
-
-        // --- Credit referrer's balance ---
-        const { data: refUser } = await supabase
-          .from('users')
-          .select('balance')
-          .eq('id', ref.referrer_id)
-          .single();
-
-        if (refUser) {
-          const refCurrentBalance = Number(refUser.balance) || 0;
-          const refNewBalance = refCurrentBalance + commission;
-
-          await supabase
-            .from('users')
-            .update({ balance: refNewBalance })
-            .eq('id', ref.referrer_id);
-        }
-
-        // --- Update the referral row's earnings ---
-        const prevEarnings = Number(ref.earnings) || 0;
-        await supabase
-          .from('referrals')
-          .update({ earnings: prevEarnings + commission })
-          .eq('id', ref.id);
-
-        // --- Log a transaction for the referrer ---
-        await supabase.from('transactions').insert({
-          user_id: ref.referrer_id,
-          type: 'referral_commission',
-          amount: commission,
-          status: 'completed',
-          meta: {
-            level: ref.level,
-            from_user_id: user.id,
-            from_user_name: user.name,
-            product_name: product.name,
-            product_price: price,
-          },
-        });
-      }
+    // ==========================================
+    // REFERRAL COMMISSIONS
+    // Only credited on the buyer's FIRST purchase.
+    // Walks up the tree using users.referred_by
+    // ==========================================
+    if (isFirstPurchase) {
+      await creditReferralCommissions({
+        supabase,
+        buyerId: user.id,
+        buyerName: user.name,
+        productName: product.name,
+        price,
+      });
     }
 
     return NextResponse.json({
@@ -233,4 +193,77 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-                }
+}
+
+// ==========================================
+// creditReferralCommissions
+// Walks up the tree (L1 → L2 → L3) and credits each
+// referrer at the appropriate rate.
+// ==========================================
+async function creditReferralCommissions({
+  supabase,
+  buyerId,
+  buyerName,
+  productName,
+  price,
+}: {
+  supabase: any;
+  buyerId: string;
+  buyerName: string;
+  productName: string;
+  price: number;
+}) {
+  let currentUserId = buyerId;
+
+  for (let level = 1; level <= 3; level++) {
+    // Find the referrer of currentUserId
+    const { data: current } = await supabase
+      .from('users')
+      .select('referred_by')
+      .eq('id', currentUserId)
+      .maybeSingle();
+
+    const referrerId = current?.referred_by;
+    if (!referrerId) break; // no more ancestors
+
+    const rate = REFERRAL_RATES[level] || 0;
+    if (rate <= 0) break;
+
+    const commission = Math.round(price * rate * 100) / 100;
+    if (commission <= 0) break;
+
+    // --- Credit referrer's balance ---
+    const { data: refUser } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', referrerId)
+      .maybeSingle();
+
+    if (refUser) {
+      const refCurrentBalance = Number(refUser.balance) || 0;
+      await supabase
+        .from('users')
+        .update({ balance: refCurrentBalance + commission })
+        .eq('id', referrerId);
+    }
+
+    // --- Log a transaction for the referrer ---
+    await supabase.from('transactions').insert({
+      user_id: referrerId,
+      type: 'referral_commission',
+      amount: commission,
+      status: 'completed',
+      meta: {
+        level,
+        from_user_id: buyerId,
+        from_user_name: buyerName,
+        product_name: productName,
+        product_price: price,
+        rate: rate * 100 + '%',
+      },
+    });
+
+    // Move up the chain
+    currentUserId = referrerId;
+  }
+}
