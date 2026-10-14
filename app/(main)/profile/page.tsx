@@ -12,6 +12,9 @@ const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
 
+const TELEGRAM_LINK = 'https://t.me/+i4rSSZUHBu00NDMy';
+const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
+
 interface ProfileUser {
   id: string;
   name: string;
@@ -128,7 +131,6 @@ export default function ProfilePage() {
 
   // Listen for PWA install prompt
   useEffect(() => {
-    // Already installed?
     if (
       typeof window !== 'undefined' &&
       window.matchMedia('(display-mode: standalone)').matches
@@ -342,7 +344,7 @@ export default function ProfilePage() {
           <ChevronRightIcon size={18} className="text-gray-400" />
         </button>
         <a
-          href="https://t.me/+GM_Fo41-HFsxNTc0"
+          href={TELEGRAM_LINK}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
@@ -353,13 +355,13 @@ export default function ProfilePage() {
           <ChevronRightIcon size={18} className="text-gray-400" />
         </a>
         <a
-          href="https://whatsapp.com/channel/0029Vb9OlFtKrWR36rpMst0O"
+          href={WHATSAPP_LINK}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition"
         >
           <span className="text-gray-900 font-medium text-sm">
-            Follow WhatsApp Channel
+            Follow the Vortex channel on WhatsApp
           </span>
           <ChevronRightIcon size={18} className="text-gray-400" />
         </a>
@@ -1134,4 +1136,4 @@ function BindModal({
       </div>
     </div>
   );
-  }
+        }
