@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import BottomNav from '@/components/BottomNav';
+import WelcomeModal from '@/components/WelcomeModal';
 import { RefreshIcon } from '@/components/icons';
 import { Logo } from '@/components/Logo';
 
@@ -26,7 +27,7 @@ export default function MainLayout({
 
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col">
-      {/* Header - Premium Dark */}
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-[#0F172A] border-b border-[#1E293B] shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between px-5 py-3">
           <div className="flex items-center gap-2">
@@ -41,20 +42,21 @@ export default function MainLayout({
             className="p-2 rounded-full text-[#F8FAFC] hover:bg-white/10 transition active:scale-95"
             aria-label="Refresh"
           >
-            <RefreshIcon
-              className={refreshing ? 'animate-spin-slow' : ''}
-            />
+            <RefreshIcon className={refreshing ? 'animate-spin-slow' : ''} />
           </button>
         </div>
       </header>
 
-      {/* Main Content - Deep Slate Background */}
+      {/* Main Content */}
       <main className="flex-1 max-w-md mx-auto w-full px-5 pt-4 pb-28">
         {children}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Nav */}
       <BottomNav />
+
+      {/* Welcome Popup (shows once per user) */}
+      <WelcomeModal />
     </div>
   );
 }
