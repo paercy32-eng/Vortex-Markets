@@ -8,10 +8,7 @@ export const fetchCache = 'force-no-store';
 
 // ==========================================
 // GET /api/referrals
-// Returns the current user's referral info:
-// - Their referral code
-// - Their downline (grouped by level)
-// - Total earnings
+// Reads the referral tree using users.referred_by
 // ==========================================
 export async function GET() {
   try {
@@ -26,66 +23,78 @@ export async function GET() {
 
     const supabase = getServiceClient();
 
-    // --- Fetch referral links where this user is the referrer ---
-    const { data: referralRows, error } = await supabase
-      .from('referrals')
-      .select('id, referred_id, level, earnings, created_at')
-      .eq('referrer_id', user.id)
+    // --- Level 1: direct referrals ---
+    const { data: level1Users } = await supabase
+      .from('users')
+      .select('id, name, phone, created_at')
+      .eq('referred_by', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Referrals fetch error:', error);
-      return NextResponse.json(
-        { error: 'Could not fetch referrals' },
-        { status: 500 }
-      );
+    const level1Ids = (level1Users || []).map((u) => u.id);
+
+    // --- Level 2 ---
+    let level2Users: any[] = [];
+    if (level1Ids.length > 0) {
+      const { data } = await supabase
+        .from('users')
+        .select('id, name, phone, created_at')
+        .in('referred_by', level1Ids)
+        .order('created_at', { ascending: false });
+      level2Users = data || [];
     }
 
-    const rows = referralRows || [];
+    const level2Ids = level2Users.map((u) => u.id);
 
-    // --- Fetch the names/phones of referred users (in one query) ---
-    const referredIds = rows.map((r) => r.referred_id);
-
-    let referredUsers: Record<string, { name: string; phone: string }> = {};
-
-    if (referredIds.length > 0) {
-      const { data: usersData } = await supabase
+    // --- Level 3 ---
+    let level3Users: any[] = [];
+    if (level2Ids.length > 0) {
+      const { data } = await supabase
         .from('users')
-        .select('id, name, phone')
-        .in('id', referredIds);
+        .select('id, name, phone, created_at')
+        .in('referred_by', level2Ids)
+        .order('created_at', { ascending: false });
+      level3Users = data || [];
+    }
 
-      if (usersData) {
-        referredUsers = usersData.reduce((acc, u) => {
-          acc[u.id] = { name: u.name, phone: u.phone };
-          return acc;
-        }, {} as Record<string, { name: string; phone: string }>);
+    // --- Fetch earnings from referrals table (if any exist) ---
+    const allReferredIds = [
+      ...level1Ids,
+      ...level2Ids,
+      ...level3Users.map((u) => u.id),
+    ];
+
+    let earningsMap: Record<string, number> = {};
+    if (allReferredIds.length > 0) {
+      const { data: earningsRows } = await supabase
+        .from('referrals')
+        .select('referred_id, earnings')
+        .eq('referrer_id', user.id);
+
+      if (earningsRows) {
+        earningsRows.forEach((r) => {
+          earningsMap[r.referred_id] =
+            (earningsMap[r.referred_id] || 0) + Number(r.earnings || 0);
+        });
       }
     }
 
-    // --- Group by level and total earnings ---
-    const level1: any[] = [];
-    const level2: any[] = [];
-    const level3: any[] = [];
+    const buildEntry = (u: any) => ({
+      id: u.id,
+      referred_id: u.id,
+      name: u.name || 'Unknown',
+      phone: u.phone || '',
+      earnings: earningsMap[u.id] || 0,
+      joined_at: u.created_at,
+    });
 
-    let totalEarnings = 0;
+    const level1 = level1Users?.map(buildEntry) || [];
+    const level2 = level2Users.map(buildEntry);
+    const level3 = level3Users.map(buildEntry);
 
-    for (const row of rows) {
-      totalEarnings += Number(row.earnings) || 0;
-
-      const referred = referredUsers[row.referred_id];
-      const entry = {
-        id: row.id,
-        referred_id: row.referred_id,
-        name: referred?.name || 'Unknown',
-        phone: referred?.phone || '',
-        earnings: Number(row.earnings) || 0,
-        joined_at: row.created_at,
-      };
-
-      if (row.level === 1) level1.push(entry);
-      else if (row.level === 2) level2.push(entry);
-      else if (row.level === 3) level3.push(entry);
-    }
+    const totalEarnings = Object.values(earningsMap).reduce(
+      (sum, val) => sum + val,
+      0
+    );
 
     return NextResponse.json({
       success: true,
