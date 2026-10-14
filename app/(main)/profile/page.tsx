@@ -94,6 +94,10 @@ export default function ProfilePage() {
   const [showGift, setShowGift] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // PWA install
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
   async function loadProfile() {
     setLoading(true);
     try {
@@ -122,6 +126,50 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
+  // Listen for PWA install prompt
+  useEffect(() => {
+    // Already installed?
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(display-mode: standalone)').matches
+    ) {
+      setIsInstalled(true);
+    }
+
+    function handleBeforeInstall(e: Event) {
+      e.preventDefault();
+      setInstallPrompt(e);
+    }
+
+    function handleAppInstalled() {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  async function handleInstall() {
+    if (!installPrompt) {
+      toast.error('Install option not available. Try opening in Chrome.');
+      return;
+    }
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      toast.success('Installing app...');
+    } else {
+      toast('Install cancelled', { icon: 'ℹ️' });
+    }
+    setInstallPrompt(null);
+  }
+
   async function handleLogout() {
     try {
       await fetch('/api/auth/logout?t=' + Date.now(), {
@@ -135,7 +183,6 @@ export default function ProfilePage() {
     }
   }
 
-  // Merge deposits + withdrawals into one timeline
   const transactions: Transaction[] = [
     ...deposits.map((d) => ({
       id: d.id,
@@ -233,6 +280,37 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+
+      {/* Install App (only when available) */}
+      {!isInstalled && (
+        <button
+          onClick={handleInstall}
+          className="w-full flex items-center gap-3 bg-white rounded-2xl p-4 mb-4 shadow-sm active:scale-[0.99] transition border-l-4 border-red-600"
+        >
+          <div className="w-11 h-11 rounded-xl bg-red-600 flex items-center justify-center flex-shrink-0">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 text-white"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-gray-900 font-bold text-sm">Install Vortex App</p>
+            <p className="text-gray-500 text-[10px] mt-0.5">
+              Add to your home screen for quick access
+            </p>
+          </div>
+          <ChevronRightIcon size={18} className="text-gray-400" />
+        </button>
+      )}
 
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-sm">
@@ -380,7 +458,6 @@ function HistoryModal({
           </button>
         </div>
 
-        {/* Filters */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           {(['all', 'deposit', 'withdrawal'] as const).map((f) => (
             <button
@@ -1057,4 +1134,4 @@ function BindModal({
       </div>
     </div>
   );
-                  }
+  }
