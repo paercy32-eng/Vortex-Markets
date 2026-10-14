@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
