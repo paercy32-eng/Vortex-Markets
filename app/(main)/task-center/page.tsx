@@ -84,7 +84,7 @@ export default function TaskCenterPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#E0A44C] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function TaskCenterPage() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 text-sm">Could not load task center.</p>
+        <p className="text-[#94A3B8] text-sm">Could not load task center.</p>
       </div>
     );
   }
@@ -101,50 +101,64 @@ export default function TaskCenterPage() {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 px-1">
-        <Link href="/profile" className="text-gray-400 text-xl">
+        <Link href="/profile" className="text-[#94A3B8] text-xl">
           ←
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-white">Task Center</h1>
-          <p className="text-gray-400 text-xs">
+          <h1 className="text-xl font-bold text-[#F8FAFC]">Task Center</h1>
+          <p className="text-[#94A3B8] text-xs">
             Grow your team and unlock rewards.
           </p>
         </div>
       </div>
 
       {/* Total Team Investment */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-3 shadow-lg shadow-red-900/20">
-        <p className="text-white/80 text-[10px] uppercase tracking-wider mb-1">
-          Total Team Investment
-        </p>
-        <p className="text-white font-bold text-3xl">
-          {data.teamInvestment.toLocaleString()}{' '}
-          <span className="text-lg opacity-80">UGX</span>
-        </p>
-        <p className="text-white/70 text-[10px] mt-2">
-          Combined investment from your entire team
-        </p>
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-3 mb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider mb-0.5">
+              Total Team Investment
+            </p>
+            <p className="text-[#E0A44C] font-bold text-2xl">
+              {data.teamInvestment.toLocaleString()}{' '}
+              <span className="text-sm opacity-80 text-[#F8FAFC]">UGX</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-[#C8833A]/20 border border-[#C8833A]/40 flex items-center justify-center">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#E0A44C"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-4 h-4"
+            >
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Total Team Size */}
-      <div className="bg-white rounded-2xl p-4 mb-5 shadow-sm flex items-center justify-between">
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-3 mb-4 flex items-center justify-between">
         <div>
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-0.5">
+          <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider font-semibold mb-0.5">
             Total Team
           </p>
-          <p className="text-gray-400 text-[10px]">
+          <p className="text-[#64748B] text-[10px]">
             People you have referred (all levels)
           </p>
         </div>
-        <p className="text-red-600 font-bold text-3xl">{data.teamSize}</p>
+        <p className="text-[#F8FAFC] font-bold text-2xl">{data.teamSize}</p>
       </div>
 
-      {/* Tasks List */}
-      <p className="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-3 px-1">
+      {/* Tasks */}
+      <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider font-bold mb-2 px-1">
         Milestone Tasks
       </p>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {data.tiers.map((tier, idx) => {
           const isClaimed = tier.status === 'claimed';
           const isClaimable = tier.status === 'claimable';
@@ -154,69 +168,73 @@ export default function TaskCenterPage() {
             <button
               key={tier.target}
               onClick={() => setSelectedTier(tier)}
-              className="w-full text-left bg-white rounded-2xl p-4 shadow-sm active:scale-[0.99] transition"
+              className="w-full text-left bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-3 active:scale-[0.99] transition"
             >
               {/* Header Row */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
                       isClaimed
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-[#064E3B] border-[#34D399]/40 text-[#34D399]'
                         : isClaimable
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-gray-100 text-gray-500'
+                        ? 'bg-[#C8833A]/20 border-[#C8833A]/40 text-[#E0A44C]'
+                        : 'bg-[#0F172A] border-[#334155] text-[#64748B]'
                     }`}
                   >
-                    {isClaimed ? '✓' : isClaimable ? '★' : idx + 1}
+                    {idx + 1}
                   </div>
                   <div>
-                    <p className="text-gray-900 font-bold text-sm">
-                      UGX {tier.target.toLocaleString()}
+                    <p className="text-[#F8FAFC] font-bold text-sm">
+                      {tier.target.toLocaleString()} UGX
                     </p>
-                    <p className="text-gray-400 text-[10px]">
+                    <p className="text-[#64748B] text-[9px]">
                       Team investment goal
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-red-600 font-bold text-sm">
-                    +{tier.reward.toLocaleString()} UGX
+                  <p className="text-[#34D399] font-bold text-sm">
+                    +{tier.reward.toLocaleString()}
                   </p>
-                  <p className="text-gray-400 text-[9px] uppercase tracking-wide">
-                    Reward
+                  <p className="text-[#64748B] text-[9px] uppercase tracking-wide">
+                    UGX Reward
                   </p>
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+              {/* Progress */}
+              <div className="w-full h-1.5 bg-[#0F172A] rounded-full overflow-hidden mb-2">
                 <div
                   className={`h-full rounded-full transition-all ${
                     isClaimed
-                      ? 'bg-green-500'
+                      ? 'bg-[#34D399]'
                       : isClaimable
-                      ? 'bg-red-600'
-                      : 'bg-red-400'
+                      ? 'bg-gradient-to-r from-[#C8833A] to-[#E0A44C]'
+                      : 'bg-[#C8833A]/50'
                   }`}
                   style={{ width: `${tier.progress}%` }}
                 />
               </div>
 
-              {/* Status Text */}
+              {/* Status */}
               <div className="flex items-center justify-between">
-                <p className="text-gray-400 text-[10px]">
+                <p className="text-[10px]">
                   {isClaimed ? (
-                    'Reward already claimed'
+                    <span className="text-[#34D399] font-semibold">
+                      ✓ Reward claimed
+                    </span>
                   ) : isClaimable ? (
-                    <span className="text-red-600 font-semibold">
-                      🎉 Ready to claim!
+                    <span className="text-[#E0A44C] font-semibold">
+                      Ready to claim
                     </span>
                   ) : (
-                    `UGX ${remaining.toLocaleString()} to go`
+                    <span className="text-[#64748B]">
+                      {remaining.toLocaleString()} UGX to go
+                    </span>
                   )}
                 </p>
-                <p className="text-gray-500 text-[10px] font-semibold">
+                <p className="text-[#94A3B8] text-[10px] font-semibold">
                   {tier.progress}%
                 </p>
               </div>
@@ -225,13 +243,12 @@ export default function TaskCenterPage() {
         })}
       </div>
 
-      {/* Info note */}
-      <p className="text-gray-500 text-[9px] mt-5 px-2 text-center">
+      <p className="text-[#64748B] text-[9px] mt-4 px-2 text-center">
         Team investment includes all purchases made by your Level 1, 2 and 3
         referrals.
       </p>
 
-      {/* Tier Detail Modal */}
+      {/* Modal */}
       {selectedTier && (
         <TierDetailModal
           tier={selectedTier}
@@ -263,79 +280,82 @@ function TierDetailModal({
   const remaining = Math.max(tier.target - teamInvestment, 0);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
+      onClick={onClose}
+    >
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Milestone Task</h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">Milestone Task</h3>
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
         {/* Reward Badge */}
-        <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 text-center">
-          <p className="text-white/80 text-[10px] uppercase tracking-wider mb-1">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-2xl p-4 mb-3 text-center">
+          <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider mb-1">
             Reward
           </p>
-          <p className="text-white font-bold text-3xl">
+          <p className="text-[#34D399] font-bold text-3xl">
             +{tier.reward.toLocaleString()}{' '}
-            <span className="text-lg opacity-80">UGX</span>
+            <span className="text-sm opacity-80 text-[#F8FAFC]">UGX</span>
           </p>
         </div>
 
         {/* Target */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-3">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-3 mb-3">
           <div className="flex justify-between py-1">
-            <span className="text-gray-500 text-xs">Target</span>
-            <span className="text-gray-900 text-xs font-semibold">
-              UGX {tier.target.toLocaleString()}
+            <span className="text-[#94A3B8] text-xs">Target</span>
+            <span className="text-[#F8FAFC] text-xs font-semibold">
+              {tier.target.toLocaleString()} UGX
             </span>
           </div>
           <div className="flex justify-between py-1">
-            <span className="text-gray-500 text-xs">Your team</span>
-            <span className="text-gray-900 text-xs font-semibold">
-              UGX {teamInvestment.toLocaleString()}
+            <span className="text-[#94A3B8] text-xs">Your team</span>
+            <span className="text-[#F8FAFC] text-xs font-semibold">
+              {teamInvestment.toLocaleString()} UGX
             </span>
           </div>
-          <div className="flex justify-between py-1 border-t border-gray-200 mt-1 pt-2">
-            <span className="text-gray-500 text-xs">
+          <div className="flex justify-between py-1 border-t border-[#334155] mt-1 pt-2">
+            <span className="text-[#94A3B8] text-xs">
               {isClaimed ? 'Status' : 'Remaining'}
             </span>
             <span
               className={`text-xs font-bold ${
                 isClaimed
-                  ? 'text-green-600'
+                  ? 'text-[#34D399]'
                   : isClaimable
-                  ? 'text-red-600'
-                  : 'text-gray-900'
+                  ? 'text-[#E0A44C]'
+                  : 'text-[#F8FAFC]'
               }`}
             >
               {isClaimed
                 ? 'Claimed'
                 : isClaimable
                 ? 'Ready to claim'
-                : `UGX ${remaining.toLocaleString()}`}
+                : `${remaining.toLocaleString()} UGX`}
             </span>
           </div>
         </div>
 
         {/* Progress */}
         <div className="mb-4">
-          <div className="flex justify-between text-[10px] text-gray-500 mb-1.5">
+          <div className="flex justify-between text-[10px] text-[#94A3B8] mb-1.5">
             <span>Progress</span>
             <span>{tier.progress}%</span>
           </div>
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-[#0F172A] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
                 isClaimed
-                  ? 'bg-green-500'
+                  ? 'bg-[#34D399]'
                   : isClaimable
-                  ? 'bg-red-600'
-                  : 'bg-red-400'
+                  ? 'bg-gradient-to-r from-[#C8833A] to-[#E0A44C]'
+                  : 'bg-[#C8833A]/50'
               }`}
               style={{ width: `${tier.progress}%` }}
             />
@@ -344,8 +364,8 @@ function TierDetailModal({
 
         {/* Action */}
         {isClaimed ? (
-          <div className="text-center py-3 bg-green-50 border border-green-200 rounded-xl">
-            <p className="text-green-700 font-semibold text-sm">
+          <div className="text-center py-3 bg-[#064E3B] border border-[#34D399]/40 rounded-xl">
+            <p className="text-[#34D399] font-semibold text-sm">
               ✓ Reward already claimed
             </p>
           </div>
@@ -353,21 +373,21 @@ function TierDetailModal({
           <button
             onClick={onClaim}
             disabled={claiming}
-            className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-red-900/20 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
           >
             {claiming
               ? 'Claiming...'
-              : `Claim UGX ${tier.reward.toLocaleString()}`}
+              : `Claim ${tier.reward.toLocaleString()} UGX`}
           </button>
         ) : (
           <button
             disabled
-            className="w-full bg-gray-100 text-gray-400 font-bold py-3.5 rounded-xl cursor-not-allowed"
+            className="w-full bg-[#0F172A] border border-[#334155] text-[#64748B] font-bold py-3.5 rounded-xl cursor-not-allowed text-sm"
           >
-            Locked — UGX {remaining.toLocaleString()} more needed
+            Locked — {remaining.toLocaleString()} UGX more needed
           </button>
         )}
       </div>
     </div>
   );
-            }
+}
