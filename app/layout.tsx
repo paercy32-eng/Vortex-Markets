@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
-
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
@@ -22,9 +21,9 @@ export const metadata: Metadata = {
     title: 'Vortex Markets',
   },
   icons: {
-    icon: '/icon-192.png',
-    shortcut: '/icon-192.png',
-    apple: '/icon-192.png',
+    icon: '/file_0000000013e082088998498b52dca4f9.png',
+    shortcut: '/file_0000000013e082088998498b52dca4f9.png',
+    apple: '/file_0000000013e082088998498b52dca4f9.png',
   },
   formatDetection: {
     telephone: false,
@@ -48,6 +47,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="bg-background text-foreground antialiased">
         {children}
+        <ServiceWorkerRegister />
         <Toaster
           position="top-center"
           toastOptions={{
