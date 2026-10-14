@@ -1,7 +1,7 @@
 {
   "name": "Vortex Markets",
   "short_name": "Vortex",
-  "description": "Invest in premium aerospace modules and earn daily.",
+  "description": "Invest in premium modules and earn daily.",
   "start_url": "/modules",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,16 +9,22 @@
   "theme_color": "#DC2626",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/file_0000000013e082088998498b52dca4f9.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/file_0000000013e082088998498b52dca4f9.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/file_0000000013e082088998498b52dca4f9.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
