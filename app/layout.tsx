@@ -13,10 +13,16 @@ export const metadata: Metadata = {
   title: 'Vortex Markets',
   description: 'Premium modules, tools and products.',
   applicationName: 'Vortex Markets',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Vortex Markets',
+  },
+  icons: {
+    icon: '/icon-192.png',
+    shortcut: '/icon-192.png',
+    apple: '/icon-192.png',
   },
   formatDetection: {
     telephone: false,
@@ -24,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#FAFAFA',
+  themeColor: '#DC2626',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
