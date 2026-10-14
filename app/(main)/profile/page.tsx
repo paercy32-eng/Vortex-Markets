@@ -225,44 +225,40 @@ export default function ProfilePage() {
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Profile</h1>
-        <p className="text-gray-400 text-sm">Manage your account and wallet.</p>
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-white mb-0.5">Profile</h1>
+        <p className="text-gray-400 text-xs">Manage your account and wallet.</p>
       </div>
 
-      {/* User Card */}
-      <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-gray-900 font-bold text-base truncate">
-              {user.name}
-            </p>
-            <p className="text-gray-500 text-xs mt-0.5">{user.phone}</p>
-            <p className="text-gray-500 text-[10px] mt-1 truncate">
-              {user.is_bound
-                ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
-                : 'Account not bound'}
-            </p>
-          </div>
+      {/* User Card (compact) */}
+      <div className="bg-white rounded-xl px-4 py-3 mb-3 shadow-sm flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          {user.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-gray-900 font-bold text-sm truncate">{user.name}</p>
+          <p className="text-gray-500 text-[11px]">{user.phone}</p>
+          <p className="text-gray-500 text-[9px] mt-0.5 truncate">
+            {user.is_bound
+              ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
+              : 'Not bound'}
+          </p>
         </div>
       </div>
 
-      {/* Balance Card */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 shadow-lg shadow-red-900/20">
-        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">
+      {/* Balance Card (compact) */}
+      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-xl px-4 py-4 mb-3 shadow-md shadow-red-900/20">
+        <p className="text-white/80 text-[10px] uppercase tracking-wider mb-0.5">
           Available Balance
         </p>
-        <p className="text-white font-bold text-3xl mb-5">
+        <p className="text-white font-bold text-2xl mb-3">
           {user.balance.toLocaleString()}{' '}
-          <span className="text-lg opacity-80">UGX</span>
+          <span className="text-sm opacity-80">UGX</span>
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setShowRecharge(true)}
-            className="bg-white text-red-700 font-bold py-3 rounded-xl text-sm active:scale-[0.98] transition"
+            className="bg-white text-red-700 font-bold py-2.5 rounded-lg text-xs active:scale-[0.98] transition"
           >
             Recharge
           </button>
@@ -275,20 +271,20 @@ export default function ProfilePage() {
               }
               setShowWithdraw(true);
             }}
-            className="bg-black/25 border border-white/20 text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition"
+            className="bg-black/25 border border-white/20 text-white font-semibold py-2.5 rounded-lg text-xs active:scale-[0.98] transition"
           >
             Withdraw
           </button>
         </div>
       </div>
 
-      {/* Install App */}
+      {/* Install App (compact) */}
       {!isInstalled && (
         <button
           onClick={handleInstall}
-          className="w-full flex items-center gap-3 bg-white rounded-2xl p-4 mb-4 shadow-sm active:scale-[0.99] transition border-l-4 border-red-600"
+          className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 mb-3 shadow-sm active:scale-[0.99] transition border-l-4 border-red-600"
         >
-          <div className="w-11 h-11 rounded-xl bg-red-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -296,7 +292,7 @@ export default function ProfilePage() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-5 h-5 text-white"
+              className="w-4 h-4 text-white"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -304,86 +300,104 @@ export default function ProfilePage() {
             </svg>
           </div>
           <div className="flex-1 text-left">
-            <p className="text-gray-900 font-bold text-sm">Install Vortex App</p>
+            <p className="text-gray-900 font-bold text-xs">Install Vortex App</p>
             <p className="text-gray-500 text-[10px] mt-0.5">
-              Add to your home screen for quick access
+              Add to home screen for quick access
             </p>
           </div>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </button>
       )}
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-sm">
+      {/* Quick Actions (compact) */}
+      <div className="bg-white rounded-xl overflow-hidden mb-3 shadow-sm">
         <Link
           href="/task-center"
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-              <span className="text-base">🎯</span>
-            </div>
-            <span className="text-gray-900 font-medium text-sm">
-              Task Center
-            </span>
+          <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">🎯</span>
           </div>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <span className="text-gray-900 font-medium text-xs flex-1">
+            Task Center
+          </span>
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </Link>
+
         <button
           onClick={() => setShowHistory(true)}
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="text-gray-900 font-medium text-sm">
+          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">📊</span>
+          </div>
+          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
             Transaction History
           </span>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </button>
+
         <button
           onClick={() => setShowGift(true)}
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="text-gray-900 font-medium text-sm">
+          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">🎁</span>
+          </div>
+          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
             Redeem Gift Code
           </span>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </button>
+
         <button
           onClick={() => setShowBind(true)}
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="text-gray-900 font-medium text-sm">
+          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">🔒</span>
+          </div>
+          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
             {user.is_bound ? 'Bound Account' : 'Bind Account'}
           </span>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </button>
+
         <a
           href={TELEGRAM_LINK}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="text-gray-900 font-medium text-sm">
+          <div className="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">✈️</span>
+          </div>
+          <span className="text-gray-900 font-medium text-xs flex-1">
             Join Telegram
           </span>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </a>
+
         <a
           href={WHATSAPP_LINK}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition"
         >
-          <span className="text-gray-900 font-medium text-sm">
-            Follow the Vortex channel on WhatsApp
+          <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm">💬</span>
+          </div>
+          <span className="text-gray-900 font-medium text-xs flex-1">
+            WhatsApp Channel
           </span>
-          <ChevronRightIcon size={18} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-gray-400" />
         </a>
       </div>
 
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="w-full py-4 rounded-2xl bg-red-600/10 text-red-500 font-semibold text-sm active:scale-[0.98] transition mb-4"
+        className="w-full py-3 rounded-xl bg-red-600/10 text-red-500 font-semibold text-xs active:scale-[0.98] transition mb-4"
       >
         Sign Out
       </button>
@@ -444,7 +458,7 @@ export default function ProfilePage() {
 }
 
 // ============================================================
-// TRANSACTION HISTORY MODAL (Combined)
+// TRANSACTION HISTORY MODAL
 // ============================================================
 function HistoryModal({
   onClose,
@@ -1149,4 +1163,4 @@ function BindModal({
       </div>
     </div>
   );
-          }
+                                        }
