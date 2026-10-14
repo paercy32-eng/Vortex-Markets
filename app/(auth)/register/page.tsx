@@ -18,7 +18,6 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Prefill referral code from URL (?ref=XXXXX)
   useEffect(() => {
     const ref = searchParams.get('ref');
     if (ref) {
@@ -71,12 +70,21 @@ function RegisterForm() {
 
   return (
     <main className="min-h-screen relative flex items-center justify-center px-4 py-8 overflow-hidden bg-[#0F172A]">
-      {/* Decorative Background Glows */}
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: 'url(/auth-bg.jpg)',
+        }}
+      />
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/85 via-[#0F172A]/90 to-[#0F172A]/95" />
+
+      {/* Decorative Glows */}
       <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-[#C8833A] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-[#0EA5E9] rounded-full mix-blend-screen filter blur-[120px] opacity-10"></div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Header */}
         <div className="mb-6 px-2 text-center">
           <div className="flex justify-center mb-3">
             <Logo size={40} />
@@ -85,17 +93,22 @@ function RegisterForm() {
           <p className="text-[#94A3B8] text-xs">Join Vortex Markets and start accessing our modules.</p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Phone Number */}
+        <div className="bg-[#1E293B]/90 backdrop-blur-xl border border-[#334155] rounded-3xl p-6 shadow-2xl">
+          <form
+            onSubmit={handleSubmit}
+            name="register-form"
+            autoComplete="on"
+            className="space-y-4"
+          >
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+              <label htmlFor="register-phone" className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
                 Phone Number
               </label>
               <input
+                id="register-phone"
+                name="phone"
                 type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="0700123456"
@@ -104,14 +117,16 @@ function RegisterForm() {
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+              <label htmlFor="register-password" className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="register-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
@@ -128,13 +143,15 @@ function RegisterForm() {
               </div>
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+              <label htmlFor="register-confirm-password" className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
                 Confirm Password
               </label>
               <input
+                id="register-confirm-password"
+                name="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
@@ -143,13 +160,15 @@ function RegisterForm() {
               />
             </div>
 
-            {/* Referral Code */}
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
+              <label htmlFor="register-referral" className="block text-[10px] text-[#94A3B8] font-bold mb-1.5 tracking-wider uppercase">
                 Referral Code <span className="text-[#475569] lowercase font-normal">(optional)</span>
               </label>
               <input
+                id="register-referral"
+                name="referralCode"
                 type="text"
+                autoComplete="off"
                 value={referralCode}
                 onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                 placeholder="VRTX-XXXXX"
