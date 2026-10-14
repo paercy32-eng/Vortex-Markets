@@ -42,12 +42,21 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen relative flex items-center justify-center px-4 py-8 overflow-hidden bg-[#0F172A]">
-      {/* Decorative Background Glows */}
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: 'url(/auth-bg.jpg)',
+        }}
+      />
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/85 via-[#0F172A]/90 to-[#0F172A]/95" />
+
+      {/* Decorative Glows */}
       <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-[#C8833A] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-[#0EA5E9] rounded-full mix-blend-screen filter blur-[120px] opacity-10"></div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Header */}
         <div className="mb-8 px-2 text-center">
           <div className="flex justify-center mb-4">
             <Logo size={48} />
@@ -56,16 +65,22 @@ export default function LoginPage() {
           <p className="text-[#94A3B8] text-sm">Sign in to access your account and modules.</p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-[#1E293B] border border-[#334155] rounded-3xl p-6 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Phone Number */}
+        <div className="bg-[#1E293B]/90 backdrop-blur-xl border border-[#334155] rounded-3xl p-6 shadow-2xl">
+          <form
+            onSubmit={handleSubmit}
+            name="login-form"
+            autoComplete="on"
+            className="space-y-5"
+          >
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
+              <label htmlFor="login-phone" className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
                 Phone Number
               </label>
               <input
+                id="login-phone"
+                name="phone"
                 type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="0700123456"
@@ -74,14 +89,16 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
+              <label htmlFor="login-password" className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="login-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
@@ -123,4 +140,4 @@ export default function LoginPage() {
       </div>
     </main>
   );
-}
+                }
