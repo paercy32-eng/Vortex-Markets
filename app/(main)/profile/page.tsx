@@ -55,13 +55,15 @@ type Transaction = {
 function statusPillClass(status: string): string {
   const s = (status || '').toLowerCase();
   if (s === 'completed' || s === 'approved' || s === 'successful')
-    return 'pill-success';
-  if (s === 'pending') return 'pill-warning';
-  if (s === 'rejected' || s === 'failed') return 'pill-danger';
-  return 'pill-muted';
+    return 'text-[#34D399] bg-[#064E3B]/60 border border-[#34D399]/30';
+  if (s === 'pending')
+    return 'text-[#E0A44C] bg-[#78350F]/60 border border-[#E0A44C]/30';
+  if (s === 'rejected' || s === 'failed')
+    return 'text-[#F87171] bg-[#7F1D1D]/60 border border-[#F87171]/30';
+  return 'text-[#94A3B8] bg-[#334155] border border-[#475569]';
 }
 
-function statusLabel(status: string): string {
+function statusPill(status: string): string {
   const s = (status || '').toLowerCase();
   if (s === 'pending') return 'REVIEWING';
   if (s === 'approved' || s === 'completed') return 'COMPLETED';
@@ -209,7 +211,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#E0A44C] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -217,7 +219,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 text-sm">Could not load profile.</p>
+        <p className="text-[#94A3B8] text-sm">Could not load profile.</p>
       </div>
     );
   }
@@ -226,19 +228,23 @@ export default function ProfilePage() {
     <div className="animate-fade-in">
       {/* Page Header */}
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-white mb-0.5">Profile</h1>
-        <p className="text-gray-400 text-xs">Manage your account and wallet.</p>
+        <h1 className="text-xl font-bold text-[#F8FAFC] mb-0.5">Profile</h1>
+        <p className="text-[#94A3B8] text-xs">
+          Manage your account and wallet.
+        </p>
       </div>
 
-      {/* User Card (compact) */}
-      <div className="bg-white rounded-xl px-4 py-3 mb-3 shadow-sm flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+      {/* User Card */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-3 mb-3 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C8833A] to-[#E0A44C] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-gray-900 font-bold text-sm truncate">{user.name}</p>
-          <p className="text-gray-500 text-[11px]">{user.phone}</p>
-          <p className="text-gray-500 text-[9px] mt-0.5 truncate">
+          <p className="text-[#F8FAFC] font-bold text-sm truncate">
+            {user.name}
+          </p>
+          <p className="text-[#94A3B8] text-[11px]">{user.phone}</p>
+          <p className="text-[#64748B] text-[9px] mt-0.5 truncate">
             {user.is_bound
               ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
               : 'Not bound'}
@@ -246,19 +252,19 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Balance Card (compact) */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-xl px-4 py-4 mb-3 shadow-md shadow-red-900/20">
-        <p className="text-white/80 text-[10px] uppercase tracking-wider mb-0.5">
+      {/* Balance Card */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-4 mb-3">
+        <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider mb-0.5">
           Available Balance
         </p>
-        <p className="text-white font-bold text-2xl mb-3">
+        <p className="text-[#E0A44C] font-bold text-2xl mb-3">
           {user.balance.toLocaleString()}{' '}
-          <span className="text-sm opacity-80">UGX</span>
+          <span className="text-sm opacity-70 text-[#F8FAFC]">UGX</span>
         </p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setShowRecharge(true)}
-            className="bg-white text-red-700 font-bold py-2.5 rounded-lg text-xs active:scale-[0.98] transition"
+            className="bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-2.5 rounded-lg text-xs active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20"
           >
             Recharge
           </button>
@@ -271,28 +277,28 @@ export default function ProfilePage() {
               }
               setShowWithdraw(true);
             }}
-            className="bg-black/25 border border-white/20 text-white font-semibold py-2.5 rounded-lg text-xs active:scale-[0.98] transition"
+            className="bg-[#0F172A] border border-[#334155] text-[#F8FAFC] font-semibold py-2.5 rounded-lg text-xs active:scale-[0.98] transition"
           >
             Withdraw
           </button>
         </div>
       </div>
 
-      {/* Install App (compact) */}
+      {/* Install App */}
       {!isInstalled && (
         <button
           onClick={handleInstall}
-          className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 mb-3 shadow-sm active:scale-[0.99] transition border-l-4 border-red-600"
+          className="w-full flex items-center gap-3 bg-[#1E293B] border border-[#334155] border-l-4 border-l-[#C8833A] rounded-2xl px-4 py-3 mb-3 active:scale-[0.99] transition"
         >
-          <div className="w-9 h-9 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-[#C8833A]/20 border border-[#C8833A]/40 flex items-center justify-center flex-shrink-0">
             <svg
               viewBox="0 0 24 24"
               fill="none"
-              stroke="currentColor"
+              stroke="#E0A44C"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-4 h-4 text-white"
+              className="w-4 h-4"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -300,104 +306,106 @@ export default function ProfilePage() {
             </svg>
           </div>
           <div className="flex-1 text-left">
-            <p className="text-gray-900 font-bold text-xs">Install Vortex App</p>
-            <p className="text-gray-500 text-[10px] mt-0.5">
+            <p className="text-[#F8FAFC] font-bold text-xs">
+              Install Vortex App
+            </p>
+            <p className="text-[#94A3B8] text-[10px] mt-0.5">
               Add to home screen for quick access
             </p>
           </div>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </button>
       )}
 
-      {/* Quick Actions (compact) */}
-      <div className="bg-white rounded-xl overflow-hidden mb-3 shadow-sm">
+      {/* Quick Actions */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl overflow-hidden mb-3">
         <Link
           href="/task-center"
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
-          <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#C8833A]/20 border border-[#C8833A]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">🎯</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1">
             Task Center
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </Link>
 
         <button
           onClick={() => setShowHistory(true)}
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
-          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">📊</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1 text-left">
             Transaction History
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </button>
 
         <button
           onClick={() => setShowGift(true)}
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
-          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#EF4444]/20 border border-[#EF4444]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">🎁</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1 text-left">
             Redeem Gift Code
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </button>
 
         <button
           onClick={() => setShowBind(true)}
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
-          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#E0A44C]/20 border border-[#E0A44C]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">🔒</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1 text-left">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1 text-left">
             {user.is_bound ? 'Bound Account' : 'Bind Account'}
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </button>
 
         <a
           href={TELEGRAM_LINK}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition border-b border-gray-100"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
-          <div className="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">✈️</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1">
             Join Telegram
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </a>
 
         <a
           href={WHATSAPP_LINK}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-50 transition"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition"
         >
-          <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#25D366]/20 border border-[#25D366]/40 flex items-center justify-center flex-shrink-0">
             <span className="text-sm">💬</span>
           </div>
-          <span className="text-gray-900 font-medium text-xs flex-1">
+          <span className="text-[#F8FAFC] font-medium text-xs flex-1">
             WhatsApp Channel
           </span>
-          <ChevronRightIcon size={16} className="text-gray-400" />
+          <ChevronRightIcon size={16} className="text-[#64748B]" />
         </a>
       </div>
 
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="w-full py-3 rounded-xl bg-red-600/10 text-red-500 font-semibold text-xs active:scale-[0.98] transition mb-4"
+        className="w-full py-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#F87171] font-semibold text-xs active:scale-[0.98] transition mb-4"
       >
         Sign Out
       </button>
@@ -475,14 +483,16 @@ function HistoryModal({
   });
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Transaction History</h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">
+            Transaction History
+          </h3>
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
@@ -494,8 +504,8 @@ function HistoryModal({
               onClick={() => setFilter(f)}
               className={`py-2 rounded-full text-xs font-semibold transition ${
                 filter === f
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white'
+                  : 'bg-[#0F172A] text-[#94A3B8] border border-[#334155]'
               }`}
             >
               {f === 'all' ? 'All' : f === 'deposit' ? 'Deposits' : 'Withdrawals'}
@@ -505,48 +515,50 @@ function HistoryModal({
 
         {filtered.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-gray-400 text-sm">No records yet.</p>
+            <p className="text-[#94A3B8] text-sm">No records yet.</p>
           </div>
         ) : (
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             {filtered.map((t) => (
               <div
                 key={t.id}
-                className="bg-gray-50 border border-gray-100 rounded-xl p-3"
+                className="bg-[#0F172A] border border-[#334155] rounded-xl p-3"
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                         t.kind === 'deposit'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                          ? 'bg-[#064E3B] text-[#34D399]'
+                          : 'bg-[#7F1D1D] text-[#F87171]'
                       }`}
                     >
                       {t.kind === 'deposit' ? '↓' : '↑'}
                     </div>
-                    <span className="text-gray-900 font-semibold text-sm">
+                    <span className="text-[#F8FAFC] font-semibold text-sm">
                       {t.kind === 'deposit' ? 'Deposit' : 'Withdrawal'}
                     </span>
                   </div>
                   <span
                     className={`text-xs font-bold ${
                       t.kind === 'deposit'
-                        ? 'text-green-600'
-                        : 'text-red-600'
+                        ? 'text-[#34D399]'
+                        : 'text-[#F87171]'
                     }`}
                   >
                     {t.kind === 'deposit' ? '+' : '−'}
                     {t.amount.toLocaleString()} UGX
                   </span>
                 </div>
-                <p className="text-gray-500 text-[10px] mb-2">{t.detail}</p>
+                <p className="text-[#64748B] text-[10px] mb-2">{t.detail}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-[10px]">
+                  <span className="text-[#64748B] text-[10px]">
                     {formatDate(t.created_at)}
                   </span>
-                  <span className={statusPillClass(t.status)}>
-                    {statusLabel(t.status)}
+                  <span
+                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${statusPillClass(t.status)}`}
+                  >
+                    {statusPill(t.status)}
                   </span>
                 </div>
               </div>
@@ -653,49 +665,53 @@ function RechargeModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 max-h-[90vh] overflow-y-auto animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">
             Recharge {step < 4 && `— Step ${step} of 3`}
           </h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
         {step === 1 && (
           <>
-            <label className="input-label">Amount (UGX)</label>
+            <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+              Amount (UGX)
+            </label>
             <input
               type="number"
-              className="input mb-4"
+              className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
               placeholder={`Min ${MIN_DEPOSIT.toLocaleString()}`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
 
-            <label className="input-label">Mobile Money Number</label>
+            <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+              Mobile Money Number
+            </label>
             <input
               type="tel"
-              className="input mb-4"
+              className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
               placeholder="0700123456"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               inputMode="tel"
             />
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
+            <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
               Minimum deposit is {MIN_DEPOSIT.toLocaleString()} UGX.
             </div>
 
             <button
               onClick={createDeposit}
               disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
             >
               {loading ? 'Please wait...' : 'Confirm'}
             </button>
@@ -704,9 +720,9 @@ function RechargeModal({
 
         {step === 2 && (
           <>
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-[#94A3B8] text-sm mb-4">
               Select the network you will use to pay{' '}
-              <span className="text-gray-900 font-semibold">
+              <span className="text-[#F8FAFC] font-semibold">
                 {numericAmount.toLocaleString()} UGX
               </span>
               .
@@ -717,53 +733,55 @@ function RechargeModal({
                 setNetwork('AIRTEL');
                 setStep(3);
               }}
-              className="w-full p-4 rounded-2xl border border-gray-200 bg-white mb-3 text-left active:scale-[0.98] transition flex items-center justify-between"
+              className="w-full p-4 rounded-2xl bg-[#0F172A] border border-[#334155] mb-3 text-left active:scale-[0.98] transition flex items-center justify-between"
             >
-              <span className="text-gray-900 font-semibold">Airtel</span>
-              <span className="text-red-600 text-xs font-bold">SELECT →</span>
+              <span className="text-[#F8FAFC] font-semibold">Airtel</span>
+              <span className="text-[#E0A44C] text-xs font-bold">SELECT →</span>
             </button>
 
             <button
               disabled
-              className="w-full p-4 rounded-2xl border border-gray-200 bg-gray-50 mb-3 text-left flex items-center justify-between opacity-50"
+              className="w-full p-4 rounded-2xl bg-[#0F172A]/50 border border-[#334155] mb-3 text-left flex items-center justify-between opacity-50"
             >
-              <span className="text-gray-400 font-semibold">MTN</span>
-              <span className="text-gray-400 text-xs">Coming soon</span>
+              <span className="text-[#64748B] font-semibold">MTN</span>
+              <span className="text-[#64748B] text-xs">Coming soon</span>
             </button>
           </>
         )}
 
         {step === 3 && (
           <>
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
-              <p className="text-gray-500 text-xs uppercase mb-1">
+            <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-4">
+              <p className="text-[#94A3B8] text-xs uppercase mb-1">
                 Merchant Code
               </p>
-              <p className="text-red-600 font-bold text-2xl tracking-wider mb-2">
+              <p className="text-[#E0A44C] font-bold text-2xl tracking-wider mb-2">
                 {MERCHANT_CODE}
               </p>
-              <p className="text-gray-500 text-xs">Name: {MERCHANT_NAME}</p>
-              <p className="text-gray-500 text-xs mt-1">
+              <p className="text-[#94A3B8] text-xs">Name: {MERCHANT_NAME}</p>
+              <p className="text-[#94A3B8] text-xs mt-1">
                 Amount: {numericAmount.toLocaleString()} UGX
               </p>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 mb-4 text-xs text-gray-600">
-              <p className="font-semibold text-gray-900 mb-1">How to pay:</p>
+            <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-3 mb-4 text-xs text-[#94A3B8]">
+              <p className="font-semibold text-[#F8FAFC] mb-1">How to pay:</p>
               <p className="mb-1">
                 Dial{' '}
-                <span className="text-red-600 font-bold">{AIRTEL_USSD}</span>
+                <span className="text-[#E0A44C] font-bold">{AIRTEL_USSD}</span>
               </p>
               <p className="mb-1">
-                Choose <strong>Pay Merchant</strong> and enter the code above.
+                Choose <strong className="text-[#F8FAFC]">Pay Merchant</strong> and enter the code above.
               </p>
               <p>Complete the payment, then copy the transaction ID.</p>
             </div>
 
-            <label className="input-label">Transaction ID</label>
+            <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+              Transaction ID
+            </label>
             <input
               type="text"
-              className="input mb-4 uppercase font-mono"
+              className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm uppercase font-mono"
               placeholder="e.g. 1234567890"
               value={txid}
               onChange={(e) => setTxid(e.target.value.toUpperCase())}
@@ -773,7 +791,7 @@ function RechargeModal({
             <button
               onClick={submitTxid}
               disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
             >
               {loading ? 'Submitting...' : 'Submit'}
             </button>
@@ -783,13 +801,13 @@ function RechargeModal({
         {step === 4 && (
           <>
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-green-100 mx-auto flex items-center justify-center mb-4">
-                <span className="text-green-600 text-3xl">✓</span>
+              <div className="w-16 h-16 rounded-full bg-[#064E3B] mx-auto flex items-center justify-center mb-4">
+                <span className="text-[#34D399] text-3xl">✓</span>
               </div>
-              <h4 className="text-gray-900 font-bold text-lg mb-2">
+              <h4 className="text-[#F8FAFC] font-bold text-lg mb-2">
                 Submitted for review
               </h4>
-              <p className="text-gray-500 text-sm mb-4">
+              <p className="text-[#94A3B8] text-sm mb-4">
                 Your deposit of {numericAmount.toLocaleString()} UGX is now
                 being reviewed.
               </p>
@@ -797,7 +815,7 @@ function RechargeModal({
 
             <button
               onClick={onSuccess}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition"
+              className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20"
             >
               Done
             </button>
@@ -853,27 +871,31 @@ function GiftCardModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Redeem Gift Code</h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">
+            Redeem Gift Code
+          </h3>
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
           Enter the gift card code you received. The full value will be
           credited to your balance immediately.
         </div>
 
-        <label className="input-label">Gift Card Code</label>
+        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+          Gift Card Code
+        </label>
         <input
           type="text"
-          className="input mb-4 uppercase font-mono"
+          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm uppercase font-mono"
           placeholder="VRTX-GIFT-XXXXXX"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -883,7 +905,7 @@ function GiftCardModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
         >
           {loading ? 'Redeeming...' : 'Redeem'}
         </button>
@@ -951,67 +973,68 @@ function WithdrawModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Withdraw</h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">Withdraw</h3>
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
-          <p className="text-gray-500 text-xs uppercase mb-1">Available</p>
-          <p className="text-gray-900 font-bold text-xl">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-4">
+          <p className="text-[#94A3B8] text-xs uppercase mb-1">Available</p>
+          <p className="text-[#E0A44C] font-bold text-xl">
             {balance.toLocaleString()} UGX
           </p>
         </div>
 
-        <label className="input-label">Amount (UGX)</label>
+        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+          Amount (UGX)
+        </label>
         <input
           type="number"
-          className="input mb-4"
+          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
           placeholder={`Min ${MIN_WITHDRAWAL.toLocaleString()}`}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
 
         {numericAmount > 0 && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+          <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-4">
             <div className="flex justify-between py-1">
-              <span className="text-gray-500 text-xs">Amount</span>
-              <span className="text-gray-900 text-xs font-semibold">
+              <span className="text-[#94A3B8] text-xs">Amount</span>
+              <span className="text-[#F8FAFC] text-xs font-semibold">
                 {numericAmount.toLocaleString()} UGX
               </span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-500 text-xs">Fee (15%)</span>
-              <span className="text-red-600 text-xs font-semibold">
+              <span className="text-[#94A3B8] text-xs">Fee (15%)</span>
+              <span className="text-[#F87171] text-xs font-semibold">
                 -{fee.toLocaleString()} UGX
               </span>
             </div>
-            <div className="flex justify-between py-1 border-t border-gray-200 mt-1 pt-2">
-              <span className="text-gray-500 text-xs">You receive</span>
-              <span className="text-green-600 text-sm font-bold">
+            <div className="flex justify-between py-1 border-t border-[#334155] mt-1 pt-2">
+              <span className="text-[#94A3B8] text-xs">You receive</span>
+              <span className="text-[#34D399] text-sm font-bold">
                 {netAmount.toLocaleString()} UGX
               </span>
             </div>
           </div>
         )}
 
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
           Minimum withdrawal is {MIN_WITHDRAWAL.toLocaleString()} UGX. A 15%
-          fee applies. You must have an active module to withdraw. The amount
-          is deducted immediately and refunded if rejected.
+          fee applies. You must have an active module to withdraw.
         </div>
 
         <button
           onClick={submit}
           disabled={loading}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
         >
           {loading ? 'Submitting...' : 'Request Withdrawal'}
         </button>
@@ -1072,32 +1095,36 @@ function BindModal({
 
   if (alreadyBound && !editing) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
         <div
-          className="modal-content animate-slide-up"
+          className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="modal-title mb-0">Bound Account</h3>
-            <button onClick={onClose} className="text-gray-400 p-1">
+            <h3 className="text-lg font-bold text-[#F8FAFC]">Bound Account</h3>
+            <button onClick={onClose} className="text-[#94A3B8] p-1">
               <CloseIcon size={20} />
             </button>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-3">
-            <p className="text-gray-500 text-xs uppercase mb-1">Full Name</p>
-            <p className="text-gray-900 font-medium text-sm">{boundName || '-'}</p>
+          <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-3">
+            <p className="text-[#94A3B8] text-xs uppercase mb-1">Full Name</p>
+            <p className="text-[#F8FAFC] font-medium text-sm">
+              {boundName || '-'}
+            </p>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
-            <p className="text-gray-500 text-xs uppercase mb-1">Phone</p>
-            <p className="text-gray-900 font-medium text-sm">{boundPhone || '-'}</p>
+          <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-4">
+            <p className="text-[#94A3B8] text-xs uppercase mb-1">Phone</p>
+            <p className="text-[#F8FAFC] font-medium text-sm">
+              {boundPhone || '-'}
+            </p>
           </div>
           <button
             onClick={() => setEditing(true)}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition mb-2"
+            className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition mb-2 shadow-lg shadow-[#C8833A]/20"
           >
             Change Bound Account
           </button>
-          <p className="text-gray-400 text-xs text-center">
+          <p className="text-[#64748B] text-xs text-center">
             You can only change this when you have no pending withdrawal.
           </p>
         </div>
@@ -1106,38 +1133,42 @@ function BindModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="modal-content animate-slide-up"
+        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">
+          <h3 className="text-lg font-bold text-[#F8FAFC]">
             {alreadyBound ? 'Change Bound Account' : 'Bind Account'}
           </h3>
-          <button onClick={onClose} className="text-gray-400 p-1">
+          <button onClick={onClose} className="text-[#94A3B8] p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
+        <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
           These details are used for withdrawals. Make sure the name matches
           your registered mobile money name.
         </div>
 
-        <label className="input-label">Full Registered Name</label>
+        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+          Full Registered Name
+        </label>
         <input
           type="text"
-          className="input mb-4"
+          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
           placeholder="e.g. John Doe"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
 
-        <label className="input-label">Mobile Money Number</label>
+        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
+          Mobile Money Number
+        </label>
         <input
           type="tel"
-          className="input mb-4"
+          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
           placeholder="0700123456"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -1147,7 +1178,7 @@ function BindModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
         >
           {loading ? 'Saving...' : alreadyBound ? 'Save Changes' : 'Bind Account'}
         </button>
@@ -1155,7 +1186,7 @@ function BindModal({
         {alreadyBound && (
           <button
             onClick={() => setEditing(false)}
-            className="w-full text-gray-400 text-xs mt-3 py-2"
+            className="w-full text-[#64748B] text-xs mt-3 py-2"
           >
             Cancel
           </button>
@@ -1163,4 +1194,4 @@ function BindModal({
       </div>
     </div>
   );
-                                        }
+}
