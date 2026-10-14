@@ -12,7 +12,6 @@ const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
 
-
 interface ProfileUser {
   id: string;
   name: string;
@@ -39,6 +38,15 @@ interface Withdrawal {
   status: string;
   created_at: string;
 }
+
+type Transaction = {
+  id: string;
+  kind: 'deposit' | 'withdrawal';
+  amount: number;
+  status: string;
+  created_at: string;
+  detail: string;
+};
 
 function statusPillClass(status: string): string {
   const s = (status || '').toLowerCase();
@@ -84,8 +92,7 @@ export default function ProfilePage() {
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showBind, setShowBind] = useState(false);
   const [showGift, setShowGift] = useState(false);
-  const [showDepositHistory, setShowDepositHistory] = useState(false);
-  const [showWithdrawHistory, setShowWithdrawHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   async function loadProfile() {
     setLoading(true);
@@ -128,51 +135,86 @@ export default function ProfilePage() {
     }
   }
 
+  // Merge deposits + withdrawals into one timeline
+  const transactions: Transaction[] = [
+    ...deposits.map((d) => ({
+      id: d.id,
+      kind: 'deposit' as const,
+      amount: d.amount,
+      status: d.status,
+      created_at: d.created_at,
+      detail: 'Mobile Money Deposit',
+    })),
+    ...withdrawals.map((w) => ({
+      id: w.id,
+      kind: 'withdrawal' as const,
+      amount: w.amount,
+      status: w.status,
+      created_at: w.created_at,
+      detail: `To ${w.recipient_name} · ${w.recipient_phone}`,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin-slow" />
+        <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="card text-center py-12">
-        <p className="text-muted text-sm">Could not load profile.</p>
+      <div className="text-center py-12">
+        <p className="text-gray-400 text-sm">Could not load profile.</p>
       </div>
     );
   }
 
   return (
     <div className="animate-fade-in">
+      {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-1">Profile</h1>
-        <p className="text-muted text-sm">Manage your account and wallet.</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Profile</h1>
+        <p className="text-gray-400 text-sm">Manage your account and wallet.</p>
       </div>
 
-      <div className="card mb-4">
-        <p className="text-foreground font-semibold text-base">{user.name}</p>
-        <p className="text-muted text-sm mt-0.5">{user.phone}</p>
-        <p className="text-muted text-xs mt-1">
-          {user.is_bound
-            ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
-            : 'Account not bound'}
-        </p>
+      {/* User Card */}
+      <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-gray-900 font-bold text-base truncate">
+              {user.name}
+            </p>
+            <p className="text-gray-500 text-xs mt-0.5">{user.phone}</p>
+            <p className="text-gray-500 text-[10px] mt-1 truncate">
+              {user.is_bound
+                ? `Bound: ${user.bound_full_name} · ${user.bound_phone}`
+                : 'Account not bound'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="card mb-4">
-        <p className="text-muted text-xs uppercase tracking-wide mb-1">
-          Balance
+      {/* Balance Card */}
+      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 shadow-lg shadow-red-900/20">
+        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">
+          Available Balance
         </p>
-        <p className="text-foreground font-bold text-3xl">
+        <p className="text-white font-bold text-3xl mb-5">
           {user.balance.toLocaleString()}{' '}
-          <span className="text-lg">UGX</span>
+          <span className="text-lg opacity-80">UGX</span>
         </p>
-        <div className="grid grid-cols-2 gap-2 mt-4">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowRecharge(true)}
-            className="btn-primary text-sm py-3"
+            className="bg-white text-red-700 font-bold py-3 rounded-xl text-sm active:scale-[0.98] transition"
           >
             Recharge
           </button>
@@ -185,71 +227,75 @@ export default function ProfilePage() {
               }
               setShowWithdraw(true);
             }}
-            className="btn-secondary text-sm py-3"
+            className="bg-black/25 border border-white/20 text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition"
           >
             Withdraw
           </button>
         </div>
       </div>
 
-      <div className="card mb-4 p-0">
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-sm">
+        <button
+          onClick={() => setShowHistory(true)}
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+        >
+          <span className="text-gray-900 font-medium text-sm">
+            Transaction History
+          </span>
+          <ChevronRightIcon size={18} className="text-gray-400" />
+        </button>
         <button
           onClick={() => setShowGift(true)}
-          className="row w-full px-4"
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="row-label">Redeem Gift Code</span>
-          <ChevronRightIcon size={18} className="text-muted" />
-        </button>
-        <button
-          onClick={() => setShowDepositHistory(true)}
-          className="row w-full px-4"
-        >
-          <span className="row-label">Deposit History</span>
-          <ChevronRightIcon size={18} className="text-muted" />
-        </button>
-        <button
-          onClick={() => setShowWithdrawHistory(true)}
-          className="row w-full px-4"
-        >
-          <span className="row-label">Withdraw History</span>
-          <ChevronRightIcon size={18} className="text-muted" />
+          <span className="text-gray-900 font-medium text-sm">
+            Redeem Gift Code
+          </span>
+          <ChevronRightIcon size={18} className="text-gray-400" />
         </button>
         <button
           onClick={() => setShowBind(true)}
-          className="row w-full px-4"
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="row-label">
+          <span className="text-gray-900 font-medium text-sm">
             {user.is_bound ? 'Bound Account' : 'Bind Account'}
           </span>
-          <ChevronRightIcon size={18} className="text-muted" />
+          <ChevronRightIcon size={18} className="text-gray-400" />
         </button>
         <a
           href="https://t.me/+GM_Fo41-HFsxNTc0"
           target="_blank"
           rel="noopener noreferrer"
-          className="row w-full px-4"
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
         >
-          <span className="row-label">Join Telegram</span>
-          <ChevronRightIcon size={18} className="text-muted" />
+          <span className="text-gray-900 font-medium text-sm">
+            Join Telegram
+          </span>
+          <ChevronRightIcon size={18} className="text-gray-400" />
         </a>
         <a
           href="https://whatsapp.com/channel/0029Vb9OlFtKrWR36rpMst0O"
           target="_blank"
           rel="noopener noreferrer"
-          className="row w-full px-4"
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition"
         >
-          <span className="row-label">Follow WhatsApp Channel</span>
-          <ChevronRightIcon size={18} className="text-muted" />
+          <span className="text-gray-900 font-medium text-sm">
+            Follow WhatsApp Channel
+          </span>
+          <ChevronRightIcon size={18} className="text-gray-400" />
         </a>
       </div>
 
+      {/* Logout */}
       <button
         onClick={handleLogout}
-        className="w-full py-4 rounded-2xl bg-danger/10 text-danger font-semibold text-sm active:scale-[0.98] transition"
+        className="w-full py-4 rounded-2xl bg-red-600/10 text-red-500 font-semibold text-sm active:scale-[0.98] transition mb-4"
       >
         Sign Out
       </button>
 
+      {/* Modals */}
       {showRecharge && (
         <RechargeModal
           onClose={() => setShowRecharge(false)}
@@ -294,58 +340,121 @@ export default function ProfilePage() {
         />
       )}
 
-      {showDepositHistory && (
+      {showHistory && (
         <HistoryModal
-          title="Deposit History"
-          onClose={() => setShowDepositHistory(false)}
-          empty={deposits.length === 0}
-        >
-          {deposits.map((d) => (
-            <div key={d.id} className="card mb-2">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-foreground font-semibold text-sm">
-                  {d.amount.toLocaleString()} UGX
-                </span>
-                <span className={statusPillClass(d.status)}>
-                  {statusLabel(d.status)}
-                </span>
-              </div>
-              <p className="text-muted text-xs">{formatDate(d.created_at)}</p>
-            </div>
-          ))}
-        </HistoryModal>
-      )}
-
-      {showWithdrawHistory && (
-        <HistoryModal
-          title="Withdraw History"
-          onClose={() => setShowWithdrawHistory(false)}
-          empty={withdrawals.length === 0}
-        >
-          {withdrawals.map((w) => (
-            <div key={w.id} className="card mb-2">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-foreground font-semibold text-sm">
-                  {w.amount.toLocaleString()} UGX
-                </span>
-                <span className={statusPillClass(w.status)}>
-                  {statusLabel(w.status)}
-                </span>
-              </div>
-              <p className="text-muted text-xs">
-                To: {w.recipient_name} · {w.recipient_phone}
-              </p>
-              <p className="text-muted text-xs mt-1">
-                {formatDate(w.created_at)}
-              </p>
-            </div>
-          ))}
-        </HistoryModal>
+          onClose={() => setShowHistory(false)}
+          transactions={transactions}
+        />
       )}
     </div>
   );
 }
 
+// ============================================================
+// TRANSACTION HISTORY MODAL (Combined)
+// ============================================================
+function HistoryModal({
+  onClose,
+  transactions,
+}: {
+  onClose: () => void;
+  transactions: Transaction[];
+}) {
+  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+
+  const filtered = transactions.filter((t) => {
+    if (filter === 'all') return true;
+    return t.kind === filter;
+  });
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="modal-title mb-0">Transaction History</h3>
+          <button onClick={onClose} className="text-gray-400 p-1">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {(['all', 'deposit', 'withdrawal'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`py-2 rounded-full text-xs font-semibold transition ${
+                filter === f
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {f === 'all' ? 'All' : f === 'deposit' ? 'Deposits' : 'Withdrawals'}
+            </button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-sm">No records yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {filtered.map((t) => (
+              <div
+                key={t.id}
+                className="bg-gray-50 border border-gray-100 rounded-xl p-3"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        t.kind === 'deposit'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {t.kind === 'deposit' ? '↓' : '↑'}
+                    </div>
+                    <span className="text-gray-900 font-semibold text-sm">
+                      {t.kind === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-xs font-bold ${
+                      t.kind === 'deposit'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {t.kind === 'deposit' ? '+' : '−'}
+                    {t.amount.toLocaleString()} UGX
+                  </span>
+                </div>
+                <p className="text-gray-500 text-[10px] mb-2">{t.detail}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-[10px]">
+                    {formatDate(t.created_at)}
+                  </span>
+                  <span className={statusPillClass(t.status)}>
+                    {statusLabel(t.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// RECHARGE MODAL
+// ============================================================
 function RechargeModal({
   onClose,
   onSuccess,
@@ -447,7 +556,7 @@ function RechargeModal({
           <h3 className="modal-title mb-0">
             Recharge {step < 4 && `— Step ${step} of 3`}
           </h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
@@ -473,14 +582,14 @@ function RechargeModal({
               inputMode="tel"
             />
 
-            <div className="modal-note mb-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
               Minimum deposit is {MIN_DEPOSIT.toLocaleString()} UGX.
             </div>
 
             <button
               onClick={createDeposit}
               disabled={loading}
-              className="btn-primary w-full"
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
             >
               {loading ? 'Please wait...' : 'Confirm'}
             </button>
@@ -489,9 +598,9 @@ function RechargeModal({
 
         {step === 2 && (
           <>
-            <p className="text-muted text-sm mb-4">
+            <p className="text-gray-600 text-sm mb-4">
               Select the network you will use to pay{' '}
-              <span className="text-foreground font-semibold">
+              <span className="text-gray-900 font-semibold">
                 {numericAmount.toLocaleString()} UGX
               </span>
               .
@@ -502,45 +611,42 @@ function RechargeModal({
                 setNetwork('AIRTEL');
                 setStep(3);
               }}
-              className="w-full p-4 rounded-2xl border border-border bg-card mb-3 text-left active:scale-[0.98] transition flex items-center justify-between"
+              className="w-full p-4 rounded-2xl border border-gray-200 bg-white mb-3 text-left active:scale-[0.98] transition flex items-center justify-between"
             >
-              <span className="text-foreground font-semibold">Airtel</span>
-              <span className="text-primary text-xs font-bold">SELECT →</span>
+              <span className="text-gray-900 font-semibold">Airtel</span>
+              <span className="text-red-600 text-xs font-bold">SELECT →</span>
             </button>
 
             <button
               disabled
-              className="w-full p-4 rounded-2xl border border-border bg-gray-50 mb-3 text-left flex items-center justify-between opacity-50"
+              className="w-full p-4 rounded-2xl border border-gray-200 bg-gray-50 mb-3 text-left flex items-center justify-between opacity-50"
             >
-              <span className="text-muted font-semibold">MTN</span>
-              <span className="text-muted text-xs">Coming soon</span>
+              <span className="text-gray-400 font-semibold">MTN</span>
+              <span className="text-gray-400 text-xs">Coming soon</span>
             </button>
           </>
         )}
 
         {step === 3 && (
           <>
-            <div className="card-flat mb-4">
-              <p className="text-muted text-xs uppercase mb-1">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+              <p className="text-gray-500 text-xs uppercase mb-1">
                 Merchant Code
               </p>
-              <p className="text-primary font-bold text-2xl tracking-wider mb-2">
+              <p className="text-red-600 font-bold text-2xl tracking-wider mb-2">
                 {MERCHANT_CODE}
               </p>
-              <p className="text-muted text-xs">Name: {MERCHANT_NAME}</p>
-              <p className="text-muted text-xs mt-1">
+              <p className="text-gray-500 text-xs">Name: {MERCHANT_NAME}</p>
+              <p className="text-gray-500 text-xs mt-1">
                 Amount: {numericAmount.toLocaleString()} UGX
               </p>
             </div>
 
-            <div className="modal-note mb-4">
-              <p className="font-semibold text-foreground mb-1">
-                How to pay:
-              </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 mb-4 text-xs text-gray-600">
+              <p className="font-semibold text-gray-900 mb-1">How to pay:</p>
               <p className="mb-1">
-                In a real app, you would dial{' '}
-                <span className="text-primary font-bold">{AIRTEL_USSD}</span>{' '}
-                (simulated for this school demo).
+                Dial{' '}
+                <span className="text-red-600 font-bold">{AIRTEL_USSD}</span>
               </p>
               <p className="mb-1">
                 Choose <strong>Pay Merchant</strong> and enter the code above.
@@ -561,7 +667,7 @@ function RechargeModal({
             <button
               onClick={submitTxid}
               disabled={loading}
-              className="btn-primary w-full"
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
             >
               {loading ? 'Submitting...' : 'Submit'}
             </button>
@@ -571,25 +677,21 @@ function RechargeModal({
         {step === 4 && (
           <>
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-success/10 mx-auto flex items-center justify-center mb-4">
-                <span className="text-success text-3xl">✓</span>
+              <div className="w-16 h-16 rounded-full bg-green-100 mx-auto flex items-center justify-center mb-4">
+                <span className="text-green-600 text-3xl">✓</span>
               </div>
-              <h4 className="text-foreground font-bold text-lg mb-2">
+              <h4 className="text-gray-900 font-bold text-lg mb-2">
                 Submitted for review
               </h4>
-              <p className="text-muted text-sm mb-4">
+              <p className="text-gray-500 text-sm mb-4">
                 Your deposit of {numericAmount.toLocaleString()} UGX is now
-                being reviewed. You'll see it as <strong>Reviewing</strong> in
-                your deposit history. Once approved, it will show as{' '}
-                <strong>Completed</strong> and the balance will be credited.
+                being reviewed.
               </p>
             </div>
 
             <button
-              onClick={() => {
-                onSuccess();
-              }}
-              className="btn-primary w-full"
+              onClick={onSuccess}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition"
             >
               Done
             </button>
@@ -600,6 +702,9 @@ function RechargeModal({
   );
 }
 
+// ============================================================
+// GIFT CARD MODAL
+// ============================================================
 function GiftCardModal({
   onClose,
   onSuccess,
@@ -649,12 +754,12 @@ function GiftCardModal({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="modal-title mb-0">Redeem Gift Code</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="modal-note mb-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
           Enter the gift card code you received. The full value will be
           credited to your balance immediately.
         </div>
@@ -672,7 +777,7 @@ function GiftCardModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Redeeming...' : 'Redeem'}
         </button>
@@ -681,6 +786,9 @@ function GiftCardModal({
   );
 }
 
+// ============================================================
+// WITHDRAW MODAL
+// ============================================================
 function WithdrawModal({
   balance,
   onClose,
@@ -744,14 +852,14 @@ function WithdrawModal({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="modal-title mb-0">Withdraw</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="card-flat mb-4">
-          <p className="text-muted text-xs uppercase mb-1">Available</p>
-          <p className="text-foreground font-bold text-xl">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+          <p className="text-gray-500 text-xs uppercase mb-1">Available</p>
+          <p className="text-gray-900 font-bold text-xl">
             {balance.toLocaleString()} UGX
           </p>
         </div>
@@ -766,29 +874,29 @@ function WithdrawModal({
         />
 
         {numericAmount > 0 && (
-          <div className="card-flat mb-4">
-            <div className="row">
-              <span className="row-label">Amount</span>
-              <span className="row-value">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+            <div className="flex justify-between py-1">
+              <span className="text-gray-500 text-xs">Amount</span>
+              <span className="text-gray-900 text-xs font-semibold">
                 {numericAmount.toLocaleString()} UGX
               </span>
             </div>
-            <div className="row">
-              <span className="row-label">Fee (15%)</span>
-              <span className="row-value text-danger">
+            <div className="flex justify-between py-1">
+              <span className="text-gray-500 text-xs">Fee (15%)</span>
+              <span className="text-red-600 text-xs font-semibold">
                 -{fee.toLocaleString()} UGX
               </span>
             </div>
-            <div className="row">
-              <span className="row-label">You receive</span>
-              <span className="row-value text-success">
+            <div className="flex justify-between py-1 border-t border-gray-200 mt-1 pt-2">
+              <span className="text-gray-500 text-xs">You receive</span>
+              <span className="text-green-600 text-sm font-bold">
                 {netAmount.toLocaleString()} UGX
               </span>
             </div>
           </div>
         )}
 
-        <div className="modal-note mb-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
           Minimum withdrawal is {MIN_WITHDRAWAL.toLocaleString()} UGX. A 15%
           fee applies. You must have an active module to withdraw. The amount
           is deducted immediately and refunded if rejected.
@@ -797,7 +905,7 @@ function WithdrawModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Submitting...' : 'Request Withdrawal'}
         </button>
@@ -806,6 +914,9 @@ function WithdrawModal({
   );
 }
 
+// ============================================================
+// BIND MODAL
+// ============================================================
 function BindModal({
   alreadyBound,
   boundPhone,
@@ -862,25 +973,25 @@ function BindModal({
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="modal-title mb-0">Bound Account</h3>
-            <button onClick={onClose} className="text-muted p-1">
+            <button onClick={onClose} className="text-gray-400 p-1">
               <CloseIcon size={20} />
             </button>
           </div>
-          <div className="card-flat mb-2">
-            <p className="text-muted text-xs uppercase mb-1">Full Name</p>
-            <p className="text-foreground font-medium">{boundName || '-'}</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-3">
+            <p className="text-gray-500 text-xs uppercase mb-1">Full Name</p>
+            <p className="text-gray-900 font-medium text-sm">{boundName || '-'}</p>
           </div>
-          <div className="card-flat mb-4">
-            <p className="text-muted text-xs uppercase mb-1">Phone</p>
-            <p className="text-foreground font-medium">{boundPhone || '-'}</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+            <p className="text-gray-500 text-xs uppercase mb-1">Phone</p>
+            <p className="text-gray-900 font-medium text-sm">{boundPhone || '-'}</p>
           </div>
           <button
             onClick={() => setEditing(true)}
-            className="btn-primary w-full mb-2"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition mb-2"
           >
             Change Bound Account
           </button>
-          <p className="text-muted text-xs text-center">
+          <p className="text-gray-400 text-xs text-center">
             You can only change this when you have no pending withdrawal.
           </p>
         </div>
@@ -898,12 +1009,12 @@ function BindModal({
           <h3 className="modal-title mb-0">
             {alreadyBound ? 'Change Bound Account' : 'Bind Account'}
           </h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="modal-note mb-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mb-4 text-xs text-gray-600">
           These details are used for withdrawals. Make sure the name matches
           your registered mobile money name.
         </div>
@@ -930,7 +1041,7 @@ function BindModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Saving...' : alreadyBound ? 'Save Changes' : 'Bind Account'}
         </button>
@@ -938,7 +1049,7 @@ function BindModal({
         {alreadyBound && (
           <button
             onClick={() => setEditing(false)}
-            className="w-full text-muted text-xs mt-3 py-2"
+            className="w-full text-gray-400 text-xs mt-3 py-2"
           >
             Cancel
           </button>
@@ -946,40 +1057,4 @@ function BindModal({
       </div>
     </div>
   );
-}
-
-function HistoryModal({
-  title,
-  onClose,
-  empty,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  empty: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">{title}</h3>
-          <button onClick={onClose} className="text-muted p-1">
-            <CloseIcon size={20} />
-          </button>
-        </div>
-
-        {empty ? (
-          <div className="text-center py-10">
-            <p className="text-muted text-sm">No records yet.</p>
-          </div>
-        ) : (
-          <div>{children}</div>
-        )}
-      </div>
-    </div>
-  );
-          }
+                  }
