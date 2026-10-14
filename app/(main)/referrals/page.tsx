@@ -120,59 +120,63 @@ export default function ReferralsPage() {
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Referrals</h1>
-        <p className="text-gray-400 text-sm">
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-white mb-0.5">Referrals</h1>
+        <p className="text-gray-400 text-xs">
           Invite friends and earn from their purchases.
         </p>
       </div>
 
-      {/* 1. Total Earnings */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 shadow-lg shadow-red-900/20">
-        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">
-          Total Earnings
-        </p>
-        <p className="text-white font-bold text-3xl">
-          {data.totalEarnings.toLocaleString()}{' '}
-          <span className="text-lg opacity-80">UGX</span>
-        </p>
-        <p className="text-white/70 text-[10px] mt-2">
-          Combined earnings across all levels
-        </p>
+      {/* 1. Total Earnings (compact) */}
+      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-xl px-4 py-3 mb-3 shadow-md shadow-red-900/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white/80 text-[10px] uppercase tracking-wider mb-0.5">
+              Total Earnings
+            </p>
+            <p className="text-white font-bold text-xl">
+              {data.totalEarnings.toLocaleString()}{' '}
+              <span className="text-sm opacity-80">UGX</span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white text-base">
+            💰
+          </div>
+        </div>
       </div>
 
-      {/* 2. Referral Code Card */}
-      <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm">
-        <p className="text-gray-500 text-xs uppercase tracking-wider mb-2 font-semibold">
+      {/* 2. Referral Code Card (compact) */}
+      <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+        <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-2 font-semibold">
           Your Referral Code
         </p>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-red-600 font-bold text-2xl tracking-wider">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <p className="text-red-600 font-bold text-base tracking-wide">
             {data.referralCode}
           </p>
           <button
             onClick={copyReferralCode}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-50 text-red-600 text-xs font-bold active:scale-95 transition"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-[11px] font-bold active:scale-95 transition"
           >
-            <CopyIcon size={14} />
+            <CopyIcon size={12} />
             Copy
           </button>
         </div>
         <button
           onClick={shareReferralLink}
-          className="w-full text-center text-xs text-gray-500 py-2.5 rounded-xl bg-gray-50 active:scale-[0.98] transition font-medium"
+          className="w-full text-center text-[11px] text-gray-500 py-2 rounded-lg bg-gray-50 active:scale-[0.98] transition font-medium"
         >
           Copy invite link
         </button>
       </div>
 
       {/* 3. Your Team */}
-      <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-3">
+      <p className="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-2">
         Your Team
       </p>
 
-      {/* Level Tabs */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      {/* Level Tabs (compact) */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
         {([1, 2, 3] as const).map((level) => {
           const count =
             level === 1
@@ -186,17 +190,15 @@ export default function ReferralsPage() {
             <button
               key={level}
               onClick={() => setActiveLevel(level)}
-              className={`py-3 rounded-2xl text-xs font-bold transition flex flex-col items-center leading-tight ${
+              className={`py-2 rounded-xl text-[11px] font-bold transition flex flex-col items-center leading-tight ${
                 isActive
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-900/20'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-900/20'
                   : 'bg-white border border-gray-200 text-gray-600'
               }`}
             >
-              <span>
-                L{level} ({count})
-              </span>
+              <span>L{level} ({count})</span>
               <span
-                className={`text-[10px] mt-1 font-semibold ${
+                className={`text-[9px] mt-0.5 font-semibold ${
                   isActive ? 'text-white/80' : 'text-red-600'
                 }`}
               >
@@ -207,39 +209,39 @@ export default function ReferralsPage() {
         })}
       </div>
 
-      {/* Selected Level Stats */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <div className="text-center mb-5">
-          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
-            Level {activeLevel} Referrals
-          </p>
-          <p className="text-gray-900 font-bold text-4xl">{currentCount}</p>
-          <p className="text-gray-400 text-xs mt-1">
-            {currentCount === 1 ? 'person' : 'people'} on this level
-          </p>
+      {/* Selected Level Stats (compact) */}
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+          <div>
+            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-0.5">
+              Level {activeLevel} Referrals
+            </p>
+            <p className="text-gray-400 text-[9px]">
+              {currentCount === 1 ? 'person' : 'people'} on this level
+            </p>
+          </div>
+          <p className="text-gray-900 font-bold text-2xl">{currentCount}</p>
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-0.5">
-                Earned on Level {activeLevel}
-              </p>
-              <p className="text-gray-400 text-[10px]">
-                Commission from L{activeLevel} referrals
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-red-600 font-bold text-xl">
-                {currentEarnings.toLocaleString()}
-              </p>
-              <p className="text-gray-400 text-[10px]">UGX</p>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-0.5">
+              Earned on Level {activeLevel}
+            </p>
+            <p className="text-gray-400 text-[9px]">
+              Commission from L{activeLevel} referrals
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-red-600 font-bold text-lg">
+              {currentEarnings.toLocaleString()}
+            </p>
+            <p className="text-gray-400 text-[9px]">UGX</p>
           </div>
         </div>
       </div>
 
-      <p className="text-gray-400 text-[10px] mt-4 px-2 text-center">
+      <p className="text-gray-500 text-[9px] mt-3 px-2 text-center">
         Commissions are credited automatically when your referrals make their
         first module purchase.
       </p>
