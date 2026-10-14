@@ -25,7 +25,7 @@ interface ReferralsResponse {
 }
 
 const LEVEL_RATES: Record<number, string> = {
-  1: '20%',
+  1: '25%',
   2: '3%',
   3: '1%',
 };
