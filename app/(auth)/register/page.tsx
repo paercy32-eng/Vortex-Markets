@@ -74,7 +74,7 @@ function RegisterForm() {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: 'url(/auth-bg.jpg)',
+          backgroundImage: 'url(/file_00000000f0908208a260140851fb0990.png)',
         }}
       />
       {/* Dark Overlay */}
@@ -213,4 +213,4 @@ export default function RegisterPage() {
       <RegisterForm />
     </Suspense>
   );
-        }
+            }
