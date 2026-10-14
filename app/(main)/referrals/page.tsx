@@ -98,12 +98,24 @@ export default function ReferralsPage() {
     );
   }
 
-  const currentList =
+  const sumEarnings = (list: ReferralEntry[]) =>
+    list.reduce((sum, r) => sum + (Number(r.earnings) || 0), 0);
+
+  const currentLevelList =
     activeLevel === 1
       ? data.levels.level1
       : activeLevel === 2
       ? data.levels.level2
       : data.levels.level3;
+
+  const currentCount =
+    activeLevel === 1
+      ? data.counts.level1
+      : activeLevel === 2
+      ? data.counts.level2
+      : data.counts.level3;
+
+  const currentEarnings = sumEarnings(currentLevelList);
 
   return (
     <div className="animate-fade-in">
@@ -115,8 +127,22 @@ export default function ReferralsPage() {
         </p>
       </div>
 
-      {/* Referral Code Card */}
-      <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+      {/* 1. Total Earnings */}
+      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 shadow-lg shadow-red-900/20">
+        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">
+          Total Earnings
+        </p>
+        <p className="text-white font-bold text-3xl">
+          {data.totalEarnings.toLocaleString()}{' '}
+          <span className="text-lg opacity-80">UGX</span>
+        </p>
+        <p className="text-white/70 text-[10px] mt-2">
+          Combined earnings across all levels
+        </p>
+      </div>
+
+      {/* 2. Referral Code Card */}
+      <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm">
         <p className="text-gray-500 text-xs uppercase tracking-wider mb-2 font-semibold">
           Your Referral Code
         </p>
@@ -140,44 +166,7 @@ export default function ReferralsPage() {
         </button>
       </div>
 
-      {/* Total Earnings Card */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-6 shadow-lg shadow-red-900/20">
-        <p className="text-white/80 text-xs uppercase tracking-wider mb-1">
-          Total Earnings
-        </p>
-        <p className="text-white font-bold text-3xl">
-          {data.totalEarnings.toLocaleString()}{' '}
-          <span className="text-lg opacity-80">UGX</span>
-        </p>
-      </div>
-
-      {/* Commission Rates */}
-      <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-3">
-        Commission Rates
-      </p>
-      <div className="bg-white rounded-2xl overflow-hidden mb-6 shadow-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-gray-600 text-sm font-medium">
-            Level 1 (Direct)
-          </span>
-          <span className="text-red-600 font-bold text-sm">20%</span>
-        </div>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-gray-600 text-sm font-medium">Level 2</span>
-          <span className="text-red-600 font-bold text-sm">3%</span>
-        </div>
-        <div className="flex items-center justify-between px-5 py-4">
-          <span className="text-gray-600 text-sm font-medium">Level 3</span>
-          <span className="text-red-600 font-bold text-sm">1%</span>
-        </div>
-      </div>
-
-      <p className="text-gray-400 text-xs mb-6 px-1">
-        Commissions are credited automatically when your referrals make their
-        first module purchase.
-      </p>
-
-      {/* Your Team */}
+      {/* 3. Your Team */}
       <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-3">
         Your Team
       </p>
@@ -218,49 +207,42 @@ export default function ReferralsPage() {
         })}
       </div>
 
-      {/* Team List */}
-      {currentList.length === 0 ? (
-        <div className="bg-white rounded-2xl text-center py-12 shadow-sm">
-          <div className="w-14 h-14 rounded-full bg-gray-100 mx-auto flex items-center justify-center mb-3">
-            <span className="text-2xl">👥</span>
-          </div>
-          <p className="text-gray-500 text-sm">
-            No Level {activeLevel} referrals yet.
+      {/* Selected Level Stats */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="text-center mb-5">
+          <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
+            Level {activeLevel} Referrals
           </p>
-          <p className="text-gray-400 text-xs mt-1 px-6">
-            Share your referral link to start building your team.
+          <p className="text-gray-900 font-bold text-4xl">{currentCount}</p>
+          <p className="text-gray-400 text-xs mt-1">
+            {currentCount === 1 ? 'person' : 'people'} on this level
           </p>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {currentList.map((entry) => (
-            <div
-              key={entry.id}
-              className="bg-white rounded-2xl p-4 flex items-center gap-3 shadow-sm"
-            >
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-sm flex-shrink-0">
-                {entry.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-900 font-semibold text-sm truncate">
-                  {entry.name}
-                </p>
-                <p className="text-gray-500 text-xs mt-0.5 truncate">
-                  {entry.phone}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-red-600 font-bold text-sm">
-                  {entry.earnings.toLocaleString()}
-                </p>
-                <p className="text-gray-400 text-[10px] font-medium mt-0.5">
-                  UGX earned
-                </p>
-              </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-0.5">
+                Earned on Level {activeLevel}
+              </p>
+              <p className="text-gray-400 text-[10px]">
+                Commission from L{activeLevel} referrals
+              </p>
             </div>
-          ))}
+            <div className="text-right">
+              <p className="text-red-600 font-bold text-xl">
+                {currentEarnings.toLocaleString()}
+              </p>
+              <p className="text-gray-400 text-[10px]">UGX</p>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+
+      <p className="text-gray-400 text-[10px] mt-4 px-2 text-center">
+        Commissions are credited automatically when your referrals make their
+        first module purchase.
+      </p>
     </div>
   );
-      }
+}
