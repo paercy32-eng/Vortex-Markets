@@ -85,7 +85,7 @@ export default function ReferralsPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#E0A44C] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function ReferralsPage() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 text-sm">Could not load referrals.</p>
+        <p className="text-[#94A3B8] text-sm">Could not load referrals.</p>
       </div>
     );
   }
@@ -121,42 +121,42 @@ export default function ReferralsPage() {
     <div className="animate-fade-in">
       {/* Page Header */}
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-white mb-0.5">Referrals</h1>
-        <p className="text-gray-400 text-xs">
+        <h1 className="text-xl font-bold text-[#F8FAFC] mb-0.5">Referrals</h1>
+        <p className="text-[#94A3B8] text-xs">
           Invite friends and earn from their purchases.
         </p>
       </div>
 
-      {/* 1. Total Earnings (compact) */}
-      <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-xl px-4 py-3 mb-3 shadow-md shadow-red-900/20">
+      {/* Total Earnings */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl px-4 py-3 mb-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-white/80 text-[10px] uppercase tracking-wider mb-0.5">
+            <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider mb-0.5">
               Total Earnings
             </p>
-            <p className="text-white font-bold text-xl">
+            <p className="text-[#34D399] font-bold text-2xl">
               {data.totalEarnings.toLocaleString()}{' '}
-              <span className="text-sm opacity-80">UGX</span>
+              <span className="text-sm opacity-80 text-[#F8FAFC]">UGX</span>
             </p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-white text-base">
+          <div className="w-9 h-9 rounded-lg bg-[#064E3B] border border-[#34D399]/30 flex items-center justify-center text-base">
             💰
           </div>
         </div>
       </div>
 
-      {/* 2. Referral Code Card (compact) */}
-      <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-        <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-2 font-semibold">
+      {/* Referral Code */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-4 mb-4">
+        <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider mb-2 font-semibold">
           Your Referral Code
         </p>
         <div className="flex items-center justify-between gap-2 mb-2.5">
-          <p className="text-red-600 font-bold text-base tracking-wide">
+          <p className="text-[#E0A44C] font-bold text-base tracking-wide">
             {data.referralCode}
           </p>
           <button
             onClick={copyReferralCode}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-[11px] font-bold active:scale-95 transition"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#C8833A]/20 border border-[#C8833A]/40 text-[#E0A44C] text-[11px] font-bold active:scale-95 transition"
           >
             <CopyIcon size={12} />
             Copy
@@ -164,18 +164,18 @@ export default function ReferralsPage() {
         </div>
         <button
           onClick={shareReferralLink}
-          className="w-full text-center text-[11px] text-gray-500 py-2 rounded-lg bg-gray-50 active:scale-[0.98] transition font-medium"
+          className="w-full text-center text-[11px] text-[#94A3B8] py-2 rounded-lg bg-[#0F172A] border border-[#334155] active:scale-[0.98] transition font-medium"
         >
           Copy invite link
         </button>
       </div>
 
-      {/* 3. Your Team */}
-      <p className="text-gray-400 text-[10px] uppercase tracking-wider font-bold mb-2">
+      {/* Your Team */}
+      <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider font-bold mb-2">
         Your Team
       </p>
 
-      {/* Level Tabs (compact) */}
+      {/* Level Tabs */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {([1, 2, 3] as const).map((level) => {
           const count =
@@ -190,16 +190,18 @@ export default function ReferralsPage() {
             <button
               key={level}
               onClick={() => setActiveLevel(level)}
-              className={`py-2 rounded-xl text-[11px] font-bold transition flex flex-col items-center leading-tight ${
+              className={`py-2 rounded-xl text-[11px] font-bold transition flex flex-col items-center leading-tight border ${
                 isActive
-                  ? 'bg-red-600 text-white shadow-md shadow-red-900/20'
-                  : 'bg-white border border-gray-200 text-gray-600'
+                  ? 'bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white border-transparent shadow-lg shadow-[#C8833A]/20'
+                  : 'bg-[#1E293B] border-[#334155] text-[#94A3B8]'
               }`}
             >
-              <span>L{level} ({count})</span>
+              <span>
+                L{level} ({count})
+              </span>
               <span
                 className={`text-[9px] mt-0.5 font-semibold ${
-                  isActive ? 'text-white/80' : 'text-red-600'
+                  isActive ? 'text-white/80' : 'text-[#E0A44C]'
                 }`}
               >
                 {LEVEL_RATES[level]}
@@ -209,42 +211,42 @@ export default function ReferralsPage() {
         })}
       </div>
 
-      {/* Selected Level Stats (compact) */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+      {/* Selected Level Stats */}
+      <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#334155]">
           <div>
-            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-0.5">
+            <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider font-semibold mb-0.5">
               Level {activeLevel} Referrals
             </p>
-            <p className="text-gray-400 text-[9px]">
+            <p className="text-[#64748B] text-[9px]">
               {currentCount === 1 ? 'person' : 'people'} on this level
             </p>
           </div>
-          <p className="text-gray-900 font-bold text-2xl">{currentCount}</p>
+          <p className="text-[#F8FAFC] font-bold text-2xl">{currentCount}</p>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-0.5">
+            <p className="text-[#94A3B8] text-[10px] uppercase tracking-wider font-semibold mb-0.5">
               Earned on Level {activeLevel}
             </p>
-            <p className="text-gray-400 text-[9px]">
+            <p className="text-[#64748B] text-[9px]">
               Commission from L{activeLevel} referrals
             </p>
           </div>
           <div className="text-right">
-            <p className="text-red-600 font-bold text-lg">
+            <p className="text-[#34D399] font-bold text-lg">
               {currentEarnings.toLocaleString()}
             </p>
-            <p className="text-gray-400 text-[9px]">UGX</p>
+            <p className="text-[#64748B] text-[9px]">UGX</p>
           </div>
         </div>
       </div>
 
-      <p className="text-gray-500 text-[9px] mt-3 px-2 text-center">
+      <p className="text-[#64748B] text-[9px] mt-3 px-2 text-center">
         Commissions are credited automatically when your referrals make their
         first module purchase.
       </p>
     </div>
   );
-}
+              }
