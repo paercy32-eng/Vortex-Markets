@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { CloseIcon, ChevronRightIcon } from '@/components/icons';
 
@@ -12,7 +13,7 @@ const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
 
-const TELEGRAM_LINK = 'https://t.me/+-sly86QRLz5mOGU0';
+const TELEGRAM_LINK = 'https://t.me/+i4rSSZUHBu00NDMy';
 const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
 
 interface ProfileUser {
@@ -97,7 +98,6 @@ export default function ProfilePage() {
   const [showGift, setShowGift] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // PWA install
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -129,7 +129,6 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
-  // Listen for PWA install prompt
   useEffect(() => {
     if (
       typeof window !== 'undefined' &&
@@ -283,7 +282,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Install App (only when available) */}
+      {/* Install App */}
       {!isInstalled && (
         <button
           onClick={handleInstall}
@@ -316,6 +315,20 @@ export default function ProfilePage() {
 
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl overflow-hidden mb-4 shadow-sm">
+        <Link
+          href="/task-center"
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+              <span className="text-base">🎯</span>
+            </div>
+            <span className="text-gray-900 font-medium text-sm">
+              Task Center
+            </span>
+          </div>
+          <ChevronRightIcon size={18} className="text-gray-400" />
+        </Link>
         <button
           onClick={() => setShowHistory(true)}
           className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition border-b border-gray-100"
@@ -1136,4 +1149,4 @@ function BindModal({
       </div>
     </div>
   );
-        }
+          }
