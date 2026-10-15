@@ -11,6 +11,7 @@ const inter = Inter({
 });
 
 const APP_URL = 'https://www.vortexgain.com';
+const OG_IMAGE = '/file_000000008a148211ab0e47b975e5ac34.png';
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
       'Premium investment modules with daily returns. Start from UGX 10,000.',
     images: [
       {
-        url: '/og-image.png',
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         alt: 'Vortex Markets — Invest. Earn. Grow.',
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
     title: 'Vortex Markets — Invest. Earn. Grow.',
     description:
       'Premium investment modules with daily returns. Start from UGX 10,000.',
-    images: ['/og-image.png'],
+    images: [OG_IMAGE],
   },
   formatDetection: {
     telephone: false,
