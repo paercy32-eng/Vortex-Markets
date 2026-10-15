@@ -22,7 +22,10 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({
+          phone: `+256${phone.replace(/^0+/, '')}`,
+          password,
+        }),
       });
 
       const data = await res.json();
@@ -52,17 +55,17 @@ export default function LoginPage() {
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/85 via-[#0F172A]/90 to-[#0F172A]/95" />
 
-      {/* Decorative Glows */}
-      <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-[#C8833A] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-[#0EA5E9] rounded-full mix-blend-screen filter blur-[120px] opacity-10"></div>
-
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 px-2 text-center">
           <div className="flex justify-center mb-4">
             <Logo size={48} />
           </div>
-          <h1 className="text-3xl font-bold text-[#F8FAFC] mb-2">Welcome back</h1>
-          <p className="text-[#94A3B8] text-sm">Sign in to access your account and modules.</p>
+          <h1 className="text-3xl font-bold text-[#F8FAFC] mb-2">
+            Welcome back
+          </h1>
+          <p className="text-[#94A3B8] text-sm">
+            Sign in to access your account and modules.
+          </p>
         </div>
 
         <div className="bg-[#1E293B]/90 backdrop-blur-xl border border-[#334155] rounded-3xl p-6 shadow-2xl">
@@ -72,25 +75,40 @@ export default function LoginPage() {
             autoComplete="on"
             className="space-y-5"
           >
+            {/* Phone Number */}
             <div>
-              <label htmlFor="login-phone" className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
+              <label
+                htmlFor="login-phone"
+                className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase"
+              >
                 Phone Number
               </label>
-              <input
-                id="login-phone"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0700123456"
-                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
-                required
-              />
+              <div className="flex items-center bg-[#0F172A] border border-[#334155] rounded-xl focus-within:border-[#C8833A] transition overflow-hidden">
+                <span className="pl-4 pr-2 text-[#F8FAFC] text-sm font-semibold select-none border-r border-[#334155]">
+                  +256
+                </span>
+                <input
+                  id="login-phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\D/g, '').replace(/^0+/, ''))
+                  }
+                  placeholder="700123456"
+                  className="w-full bg-transparent px-3 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none text-sm"
+                  required
+                />
+              </div>
             </div>
 
+            {/* Password */}
             <div>
-              <label htmlFor="login-password" className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase">
+              <label
+                htmlFor="login-password"
+                className="block text-[10px] text-[#94A3B8] font-bold mb-2 tracking-wider uppercase"
+              >
                 Password
               </label>
               <div className="relative">
@@ -102,15 +120,41 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition pr-14 text-sm"
+                  className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3.5 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition pr-12 text-sm"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-xs font-semibold"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] p-1"
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-5 h-5"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-5 h-5"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
@@ -132,7 +176,10 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm text-[#94A3B8]">
             Don't have an account?{' '}
-            <Link href="/register" className="text-[#E0A44C] font-bold hover:underline">
+            <Link
+              href="/register"
+              className="text-[#E0A44C] font-bold hover:underline"
+            >
               Create one
             </Link>
           </div>
@@ -140,4 +187,4 @@ export default function LoginPage() {
       </div>
     </main>
   );
-}
+                }
