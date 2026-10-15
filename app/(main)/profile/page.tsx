@@ -13,7 +13,7 @@ const MERCHANT_CODE = '7182484';
 const MERCHANT_NAME = 'Essentials Limited';
 const AIRTEL_USSD = '185*9#';
 
-const TELEGRAM_LINK = 'https://t.me/+i4rSSZUHBu00NDMy';
+const TELEGRAM_LINK = 'https://t.me/+XXU8Ig4lhRQyY2U0';
 const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
 
 interface ProfileUser {
@@ -26,79 +26,15 @@ interface ProfileUser {
   bound_full_name: string | null;
 }
 
-interface Deposit {
-  id: string;
-  amount: number;
-  status: string;
-  reference: string | null;
-  created_at: string;
-}
-
-interface Withdrawal {
-  id: string;
-  amount: number;
-  recipient_phone: string;
-  recipient_name: string;
-  status: string;
-  created_at: string;
-}
-
-type Transaction = {
-  id: string;
-  kind: 'deposit' | 'withdrawal';
-  amount: number;
-  status: string;
-  created_at: string;
-  detail: string;
-};
-
-function statusPillClass(status: string): string {
-  const s = (status || '').toLowerCase();
-  if (s === 'completed' || s === 'approved' || s === 'successful')
-    return 'text-[#34D399] bg-[#064E3B]/60 border border-[#34D399]/30';
-  if (s === 'pending')
-    return 'text-[#E0A44C] bg-[#78350F]/60 border border-[#E0A44C]/30';
-  if (s === 'rejected' || s === 'failed')
-    return 'text-[#F87171] bg-[#7F1D1D]/60 border border-[#F87171]/30';
-  return 'text-[#94A3B8] bg-[#334155] border border-[#475569]';
-}
-
-function statusLabel(status: string): string {
-  const s = (status || '').toLowerCase();
-  if (s === 'pending') return 'REVIEWING';
-  if (s === 'approved' || s === 'completed') return 'COMPLETED';
-  if (s === 'rejected' || s === 'failed') return 'REJECTED';
-  return s.toUpperCase();
-}
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '';
-  }
-}
-
 export default function ProfilePage() {
   const router = useRouter();
 
   const [user, setUser] = useState<ProfileUser | null>(null);
-  const [deposits, setDeposits] = useState<Deposit[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [showBind, setShowBind] = useState(false);
   const [showGift, setShowGift] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -118,8 +54,6 @@ export default function ProfilePage() {
       }
 
       setUser(data.user);
-      setDeposits(data.deposits || []);
-      setWithdrawals(data.withdrawals || []);
       setLoading(false);
     } catch (err) {
       toast.error('Network error');
@@ -186,28 +120,6 @@ export default function ProfilePage() {
     }
   }
 
-  const transactions: Transaction[] = [
-    ...deposits.map((d) => ({
-      id: d.id,
-      kind: 'deposit' as const,
-      amount: d.amount,
-      status: d.status,
-      created_at: d.created_at,
-      detail: 'Mobile Money Deposit',
-    })),
-    ...withdrawals.map((w) => ({
-      id: w.id,
-      kind: 'withdrawal' as const,
-      amount: w.amount,
-      status: w.status,
-      created_at: w.created_at,
-      detail: `To ${w.recipient_name} · ${w.recipient_phone}`,
-    })),
-  ].sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -272,7 +184,7 @@ export default function ProfilePage() {
             onClick={() => {
               if (!user.is_bound) {
                 toast.error('Bind your account first');
-                setShowBind(true);
+                router.push('/profile/bind-account');
                 return;
               }
               setShowWithdraw(true);
@@ -344,8 +256,8 @@ export default function ProfilePage() {
           <ChevronRightIcon size={16} className="text-[#64748B]" />
         </Link>
 
-        <button
-          onClick={() => setShowHistory(true)}
+        <Link
+          href="/profile/transaction-history"
           className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
           <div className="w-8 h-8 rounded-lg bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 flex items-center justify-center flex-shrink-0">
@@ -367,7 +279,7 @@ export default function ProfilePage() {
             Transaction History
           </span>
           <ChevronRightIcon size={16} className="text-[#64748B]" />
-        </button>
+        </Link>
 
         <button
           onClick={() => setShowGift(true)}
@@ -396,8 +308,8 @@ export default function ProfilePage() {
           <ChevronRightIcon size={16} className="text-[#64748B]" />
         </button>
 
-        <button
-          onClick={() => setShowBind(true)}
+        <Link
+          href="/profile/bind-account"
           className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
           <div className="w-8 h-8 rounded-lg bg-[#E0A44C]/20 border border-[#E0A44C]/40 flex items-center justify-center flex-shrink-0">
@@ -418,7 +330,7 @@ export default function ProfilePage() {
             {user.is_bound ? 'Bound Account' : 'Bind Account'}
           </span>
           <ChevronRightIcon size={16} className="text-[#64748B]" />
-        </button>
+        </Link>
 
         <a
           href={TELEGRAM_LINK}
@@ -485,19 +397,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {showBind && (
-        <BindModal
-          alreadyBound={user.is_bound}
-          boundPhone={user.bound_phone}
-          boundName={user.bound_full_name}
-          onClose={() => setShowBind(false)}
-          onSuccess={() => {
-            setShowBind(false);
-            loadProfile();
-          }}
-        />
-      )}
-
       {showGift && (
         <GiftCardModal
           onClose={() => setShowGift(false)}
@@ -507,121 +406,6 @@ export default function ProfilePage() {
           }}
         />
       )}
-
-      {showHistory && (
-        <HistoryModal
-          onClose={() => setShowHistory(false)}
-          transactions={transactions}
-        />
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// TRANSACTION HISTORY MODAL
-// ============================================================
-function HistoryModal({
-  onClose,
-  transactions,
-}: {
-  onClose: () => void;
-  transactions: Transaction[];
-}) {
-  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
-
-  const filtered = transactions.filter((t) => {
-    if (filter === 'all') return true;
-    return t.kind === filter;
-  });
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[#F8FAFC]">
-            Transaction History
-          </h3>
-          <button onClick={onClose} className="text-[#94A3B8] p-1">
-            <CloseIcon size={20} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {(['all', 'deposit', 'withdrawal'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`py-2 rounded-full text-xs font-semibold transition ${
-                filter === f
-                  ? 'bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white'
-                  : 'bg-[#0F172A] text-[#94A3B8] border border-[#334155]'
-              }`}
-            >
-              {f === 'all' ? 'All' : f === 'deposit' ? 'Deposits' : 'Withdrawals'}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-[#94A3B8] text-sm">No records yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {filtered.map((t) => (
-              <div
-                key={t.id}
-                className="bg-[#0F172A] border border-[#334155] rounded-xl p-3"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                        t.kind === 'deposit'
-                          ? 'bg-[#064E3B] text-[#34D399]'
-                          : 'bg-[#7F1D1D] text-[#F87171]'
-                      }`}
-                    >
-                      {t.kind === 'deposit' ? '↓' : '↑'}
-                    </div>
-                    <span className="text-[#F8FAFC] font-semibold text-sm">
-                      {t.kind === 'deposit' ? 'Deposit' : 'Withdrawal'}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-xs font-bold ${
-                      t.kind === 'deposit'
-                        ? 'text-[#34D399]'
-                        : 'text-[#F87171]'
-                    }`}
-                  >
-                    {t.kind === 'deposit' ? '+' : '−'}
-                    {t.amount.toLocaleString()} UGX
-                  </span>
-                </div>
-                <p className="text-[#64748B] text-[10px] mb-2">{t.detail}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#64748B] text-[10px]">
-                    {formatDate(t.created_at)}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${statusPillClass(t.status)}`}
-                  >
-                    {statusLabel(t.status)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -1114,171 +898,4 @@ function WithdrawModal({
       </div>
     </div>
   );
-}
-
-// ============================================================
-// BIND MODAL
-// ============================================================
-function BindModal({
-  alreadyBound,
-  boundPhone,
-  boundName,
-  onClose,
-  onSuccess,
-}: {
-  alreadyBound: boolean;
-  boundPhone: string | null;
-  boundName: string | null;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [editing, setEditing] = useState(!alreadyBound);
-  const [phone, setPhone] = useState(boundPhone || '');
-  const [fullName, setFullName] = useState(boundName || '');
-  const [loading, setLoading] = useState(false);
-
-  async function submit() {
-    if (!phone || !fullName) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/profile/bind?t=' + Date.now(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({ phone, fullName }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || 'Could not save');
-        setLoading(false);
-        return;
-      }
-
-      toast.success(data.message || 'Saved');
-      onSuccess();
-    } catch {
-      toast.error('Network error');
-      setLoading(false);
-    }
-  }
-
-  if (alreadyBound && !editing) {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-        onClick={onClose}
-      >
-        <div
-          className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-[#F8FAFC]">
-              Bound Account
-            </h3>
-            <button onClick={onClose} className="text-[#94A3B8] p-1">
-              <CloseIcon size={20} />
-            </button>
-          </div>
-          <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-3">
-            <p className="text-[#94A3B8] text-xs uppercase mb-1">
-              Full Name
-            </p>
-            <p className="text-[#F8FAFC] font-medium text-sm">
-              {boundName || '-'}
-            </p>
-          </div>
-          <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-4 mb-4">
-            <p className="text-[#94A3B8] text-xs uppercase mb-1">Phone</p>
-            <p className="text-[#F8FAFC] font-medium text-sm">
-              {boundPhone || '-'}
-            </p>
-          </div>
-          <button
-            onClick={() => setEditing(true)}
-            className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition mb-2 shadow-lg shadow-[#C8833A]/20"
-          >
-            Change Bound Account
-          </button>
-          <p className="text-[#64748B] text-xs text-center">
-            You can only change this when you have no pending withdrawal.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[#F8FAFC]">
-            {alreadyBound ? 'Change Bound Account' : 'Bind Account'}
-          </h3>
-          <button onClick={onClose} className="text-[#94A3B8] p-1">
-            <CloseIcon size={20} />
-          </button>
-        </div>
-
-        <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
-          These details are used for withdrawals. Make sure the name matches
-          your registered mobile money name.
-        </div>
-
-        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
-          Full Registered Name
-        </label>
-        <input
-          type="text"
-          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
-          placeholder="e.g. John Doe"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-        />
-
-        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
-          Mobile Money Number
-        </label>
-        <input
-          type="tel"
-          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm"
-          placeholder="0700123456"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          inputMode="tel"
-        />
-
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
-        >
-          {loading
-            ? 'Saving...'
-            : alreadyBound
-            ? 'Save Changes'
-            : 'Bind Account'}
-        </button>
-
-        {alreadyBound && (
-          <button
-            onClick={() => setEditing(false)}
-            className="w-full text-[#64748B] text-xs mt-3 py-2"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-    </div>
-  );
-      }
+         }
