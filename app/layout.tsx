@@ -10,9 +10,16 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const APP_URL = 'https://www.vortexgain.com';
+
 export const metadata: Metadata = {
-  title: 'Vortex Markets',
-  description: 'Premium modules, tools and products.',
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: 'Vortex Markets — Invest. Earn. Grow.',
+    template: '%s | Vortex Markets',
+  },
+  description:
+    'Premium investment modules with daily returns. Minimum deposit UGX 10,000. Withdraw anytime.',
   applicationName: 'Vortex Markets',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -24,6 +31,31 @@ export const metadata: Metadata = {
     icon: '/file_0000000013e082088998498b52dca4f9.png',
     shortcut: '/file_0000000013e082088998498b52dca4f9.png',
     apple: '/file_0000000013e082088998498b52dca4f9.png',
+  },
+  // ========== Open Graph (Facebook, WhatsApp, LinkedIn, Telegram) ==========
+  openGraph: {
+    type: 'website',
+    url: APP_URL,
+    siteName: 'Vortex Markets',
+    title: 'Vortex Markets — Invest. Earn. Grow.',
+    description:
+      'Premium investment modules with daily returns. Start from UGX 10,000.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Vortex Markets — Invest. Earn. Grow.',
+      },
+    ],
+  },
+  // ========== Twitter/X Card ==========
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Vortex Markets — Invest. Earn. Grow.',
+    description:
+      'Premium investment modules with daily returns. Start from UGX 10,000.',
+    images: ['/og-image.png'],
   },
   formatDetection: {
     telephone: false,
