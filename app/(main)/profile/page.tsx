@@ -34,7 +34,6 @@ export default function ProfilePage() {
 
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [showGift, setShowGift] = useState(false);
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -281,8 +280,8 @@ export default function ProfilePage() {
           <ChevronRightIcon size={16} className="text-[#64748B]" />
         </Link>
 
-        <button
-          onClick={() => setShowGift(true)}
+        <Link
+          href="/profile/redeem-gift"
           className="w-full flex items-center gap-3 px-4 py-3 active:bg-[#334155]/40 transition border-b border-[#334155]"
         >
           <div className="w-8 h-8 rounded-lg bg-[#EF4444]/20 border border-[#EF4444]/40 flex items-center justify-center flex-shrink-0">
@@ -306,7 +305,7 @@ export default function ProfilePage() {
             Redeem Gift Code
           </span>
           <ChevronRightIcon size={16} className="text-[#64748B]" />
-        </button>
+        </Link>
 
         <Link
           href="/profile/bind-account"
@@ -375,7 +374,7 @@ export default function ProfilePage() {
         Sign Out
       </button>
 
-      {/* Modals */}
+      {/* Recharge Modal */}
       {showRecharge && (
         <RechargeModal
           onClose={() => setShowRecharge(false)}
@@ -386,22 +385,13 @@ export default function ProfilePage() {
         />
       )}
 
+      {/* Withdraw Modal */}
       {showWithdraw && user && (
         <WithdrawModal
           balance={user.balance}
           onClose={() => setShowWithdraw(false)}
           onSuccess={() => {
             setShowWithdraw(false);
-            loadProfile();
-          }}
-        />
-      )}
-
-      {showGift && (
-        <GiftCardModal
-          onClose={() => setShowGift(false)}
-          onSuccess={() => {
-            setShowGift(false);
             loadProfile();
           }}
         />
@@ -678,97 +668,6 @@ function RechargeModal({
 }
 
 // ============================================================
-// GIFT CARD MODAL
-// ============================================================
-function GiftCardModal({
-  onClose,
-  onSuccess,
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function submit() {
-    const clean = code.trim().toUpperCase();
-    if (!clean) {
-      toast.error('Enter a gift card code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/gift-cards/redeem?t=' + Date.now(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({ code: clean }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || 'Could not redeem');
-        setLoading(false);
-        return;
-      }
-
-      toast.success(data.message || 'Gift card redeemed');
-      onSuccess();
-    } catch {
-      toast.error('Network error');
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-[#1E293B] border-t border-[#334155] rounded-t-3xl p-5 animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[#F8FAFC]">
-            Redeem Gift Code
-          </h3>
-          <button onClick={onClose} className="text-[#94A3B8] p-1">
-            <CloseIcon size={20} />
-          </button>
-        </div>
-
-        <div className="bg-[#0F172A] border border-[#334155] rounded-xl px-3 py-2 mb-4 text-xs text-[#94A3B8]">
-          Enter the gift card code you received. The full value will be
-          credited to your balance immediately.
-        </div>
-
-        <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">
-          Gift Card Code
-        </label>
-        <input
-          type="text"
-          className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition mb-4 text-sm uppercase font-mono"
-          placeholder="VRTX-GIFT-XXXXXX"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          autoComplete="off"
-        />
-
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50"
-        >
-          {loading ? 'Redeeming...' : 'Redeem'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
 // WITHDRAW MODAL
 // ============================================================
 function WithdrawModal({
@@ -898,4 +797,4 @@ function WithdrawModal({
       </div>
     </div>
   );
-         }
+        }
