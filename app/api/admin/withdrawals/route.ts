@@ -3,8 +3,8 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin'; // or getServiceClient depending on your import
-import { verifyAdminSession, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
+import { getServiceClient } from '@/lib/supabase';
+import { getCurrentAdmin } from '@/lib/auth'; // 👈 Correct import for Vortex
 import { PesaJet } from '@pesajet/sdk';
 
 const pesajet = new PesaJet({
@@ -19,18 +19,17 @@ function normalizePhone(input: string): string {
   return phone;
 }
 
-// GET — list withdrawals (unchanged)
+// GET — list withdrawals
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const session = await verifyAdminSession(token);
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await getCurrentAdmin();
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const supabase = getServiceClient();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') ?? 'pending';
 
-    let query = supabaseAdmin
+    let query = supabase
       .from('tesla_withdrawals')
       .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
 
@@ -49,7 +48,7 @@ export async function GET(req: NextRequest) {
     const userIds = Array.from(new Set((data ?? []).map((w) => w.user_id)));
     let userMap: Record<string, { name: string; phone: string }> = {};
     if (userIds.length > 0) {
-      const { data: users } = await supabaseAdmin
+      const { data: users } = await supabase
         .from('users')
         .select('id, name, phone')
         .in('id', userIds);
@@ -72,10 +71,8 @@ export async function GET(req: NextRequest) {
 // POST — approve or reject
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const session = await verifyAdminSession(token);
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await getCurrentAdmin();
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { withdrawalId, action } = await req.json();
 
@@ -83,7 +80,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
-    const { data: wd } = await supabaseAdmin
+    const supabase = getServiceClient();
+    const { data: wd } = await supabase
       .from('tesla_withdrawals')
       .select('id, user_id, amount, status, phone, full_name, meta')
       .eq('id', withdrawalId)
@@ -99,7 +97,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
       }
 
-      const { data: payer } = await supabaseAdmin
+      const { data: payer } = await supabase
         .from('users')
         .select('phone, name')
         .eq('id', wd.user_id)
@@ -118,7 +116,7 @@ export async function POST(req: NextRequest) {
           amount: userNet,
           currency: 'UGX',
           phoneNumber: payoutPhone,
-          provider: 'mtn', // Change to 'airtel' if needed, or implement logic to detect
+          provider: 'mtn', // Change to 'airtel' if needed, or implement logic
           reference: payoutRef,
           description: `Vortex Markets withdrawal for ${payoutName}`,
         });
@@ -128,7 +126,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Update withdrawal status
-      await supabaseAdmin
+      await supabase
         .from('tesla_withdrawals')
         .update({
           status: 'completed',
@@ -138,7 +136,7 @@ export async function POST(req: NextRequest) {
         .eq('id', withdrawalId);
 
       // Update the transaction log
-      await supabaseAdmin
+      await supabase
         .from('transactions')
         .update({
           type: 'withdrawal',
@@ -156,23 +154,23 @@ export async function POST(req: NextRequest) {
     // REJECT
     // ==============================
     if (action === 'reject') {
-      const { data: user } = await supabaseAdmin
+      const { data: user } = await supabase
         .from('users')
         .select('balance')
         .eq('id', wd.user_id)
         .maybeSingle();
 
-      await supabaseAdmin
+      await supabase
         .from('users')
         .update({ balance: Number(user?.balance ?? 0) + Number(wd.amount) })
         .eq('id', wd.user_id);
 
-      await supabaseAdmin
+      await supabase
         .from('tesla_withdrawals')
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .eq('id', withdrawalId);
 
-      await supabaseAdmin
+      await supabase
         .from('transactions')
         .update({ status: 'rejected' })
         .eq('user_id', wd.user_id)
