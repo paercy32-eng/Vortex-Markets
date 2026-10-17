@@ -1,96 +1,190 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/auth';
-import { getServiceClient } from '@/lib/supabase';
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// GET /api/admin/withdrawals?status=pending
-// Returns all withdrawals, optionally filtered by status.
-// Includes the requesting user's name and phone.
-// ==========================================
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin'; // or getServiceClient depending on your import
+import { verifyAdminSession, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
+import { PesaJet } from '@pesajet/sdk';
+
+const pesajet = new PesaJet({
+  apiKey: process.env.PESAJET_API_KEY!,
+  webhookSecret: process.env.PESAJET_WEBHOOK_SECRET,
+});
+
+function normalizePhone(input: string): string {
+  let phone = (input || '').replace(/[^\d]/g, '');
+  if (phone.startsWith('0')) phone = '256' + phone.slice(1);
+  if (phone.startsWith('7') && phone.length === 9) phone = '256' + phone;
+  return phone;
+}
+
+// GET — list withdrawals (unchanged)
 export async function GET(req: NextRequest) {
   try {
-    const admin = await getCurrentAdmin();
-
-    if (!admin) {
-      return NextResponse.json(
-        { error: 'Not authenticated as admin' },
-        { status: 401 }
-      );
-    }
+    const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await verifyAdminSession(token);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const statusFilter = searchParams.get('status');
+    const status = searchParams.get('status') ?? 'pending';
 
-    const supabase = getServiceClient();
+    let query = supabaseAdmin
+      .from('tesla_withdrawals')
+      .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
 
-    let query = supabase
-      .from('withdrawals')
-      .select(
-        'id, user_id, amount, recipient_phone, recipient_name, status, created_at'
-      )
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    if (statusFilter && statusFilter !== 'all') {
-      query = query.eq('status', statusFilter);
+    if (status === 'approved') {
+      query = query.in('status', ['approved', 'completed']);
+    } else if (status !== 'all') {
+      query = query.eq('status', status);
     }
 
-    const { data: withdrawals, error } = await query;
+    const { data, error } = await query;
 
     if (error) {
-      console.error('Admin withdrawals fetch error:', error);
-      return NextResponse.json(
-        { error: 'Could not fetch withdrawals' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
     }
 
-    const rows = withdrawals || [];
-
-    // --- Fetch user info for each withdrawal ---
-    const userIds = Array.from(new Set(rows.map((w) => w.user_id)));
-
-    let usersMap: Record<string, { name: string; phone: string }> = {};
-
+    const userIds = Array.from(new Set((data ?? []).map((w) => w.user_id)));
+    let userMap: Record<string, { name: string; phone: string }> = {};
     if (userIds.length > 0) {
-      const { data: usersData } = await supabase
+      const { data: users } = await supabaseAdmin
         .from('users')
         .select('id, name, phone')
         .in('id', userIds);
-
-      if (usersData) {
-        usersMap = usersData.reduce((acc, u) => {
-          acc[u.id] = { name: u.name, phone: u.phone };
-          return acc;
-        }, {} as Record<string, { name: string; phone: string }>);
-      }
+      (users ?? []).forEach((u) => {
+        userMap[u.id] = { name: u.name, phone: u.phone };
+      });
     }
 
-    const result = rows.map((w) => ({
-      id: w.id,
-      user_id: w.user_id,
-      user_name: usersMap[w.user_id]?.name || 'Unknown',
-      user_phone: usersMap[w.user_id]?.phone || '',
-      amount: Number(w.amount) || 0,
-      recipient_phone: w.recipient_phone,
-      recipient_name: w.recipient_name,
-      status: w.status,
-      created_at: w.created_at,
+    const enriched = (data ?? []).map((w) => ({
+      ...w,
+      users: userMap[w.user_id] ?? null,
     }));
 
-    return NextResponse.json({
-      success: true,
-      withdrawals: result,
-    });
-  } catch (err: any) {
-    console.error('Admin withdrawals endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    return NextResponse.json({ withdrawals: enriched });
+  } catch (err) {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+// POST — approve or reject
+export async function POST(req: NextRequest) {
+  try {
+    const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await verifyAdminSession(token);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { withdrawalId, action } = await req.json();
+
+    if (!withdrawalId || !['approve', 'reject', 'mark_completed', 'mark_failed'].includes(action)) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    const { data: wd } = await supabaseAdmin
+      .from('tesla_withdrawals')
+      .select('id, user_id, amount, status, phone, full_name, meta')
+      .eq('id', withdrawalId)
+      .maybeSingle();
+
+    if (!wd) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
+
+    // ==============================
+    // APPROVE (Send via PesaJet)
+    // ==============================
+    if (action === 'approve') {
+      if (wd.status !== 'pending') {
+        return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
+      }
+
+      const { data: payer } = await supabaseAdmin
+        .from('users')
+        .select('phone, name')
+        .eq('id', wd.user_id)
+        .maybeSingle();
+
+      const payoutPhoneRaw = wd.phone || payer?.phone || '';
+      const payoutPhone = normalizePhone(payoutPhoneRaw);
+      const payoutName = wd.full_name || payer?.name || 'User';
+      const userNet = Math.round(Number(wd.amount) * 0.85); // 15% fee deduction
+      const payoutRef = `VRTX-WD-${Date.now()}-${wd.id.slice(0,4)}`;
+
+      try {
+        // Send disbursement via PesaJet
+        await pesajet.payments.create({
+          type: 'DISBURSEMENT',
+          amount: userNet,
+          currency: 'UGX',
+          phoneNumber: payoutPhone,
+          provider: 'mtn', // Change to 'airtel' if needed, or implement logic to detect
+          reference: payoutRef,
+          description: `Vortex Markets withdrawal for ${payoutName}`,
+        });
+      } catch (payoutErr: any) {
+        console.error('PesaJet payout failed:', payoutErr);
+        return NextResponse.json({ error: payoutErr.message || 'PesaJet payout failed' }, { status: 400 });
+      }
+
+      // Update withdrawal status
+      await supabaseAdmin
+        .from('tesla_withdrawals')
+        .update({
+          status: 'completed',
+          reviewed_at: new Date().toISOString(),
+          meta: { ...wd.meta, payout_ref: payoutRef, user_net: userNet },
+        })
+        .eq('id', withdrawalId);
+
+      // Update the transaction log
+      await supabaseAdmin
+        .from('transactions')
+        .update({
+          type: 'withdrawal',
+          status: 'completed',
+          meta: { payout_ref: payoutRef, user_net: userNet },
+        })
+        .eq('user_id', wd.user_id)
+        .eq('type', 'withdrawal_request')
+        .eq('meta->>withdrawal_id', withdrawalId);
+
+      return NextResponse.json({ success: true, status: 'completed' });
+    }
+
+    // ==============================
+    // REJECT
+    // ==============================
+    if (action === 'reject') {
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('balance')
+        .eq('id', wd.user_id)
+        .maybeSingle();
+
+      await supabaseAdmin
+        .from('users')
+        .update({ balance: Number(user?.balance ?? 0) + Number(wd.amount) })
+        .eq('id', wd.user_id);
+
+      await supabaseAdmin
+        .from('tesla_withdrawals')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', withdrawalId);
+
+      await supabaseAdmin
+        .from('transactions')
+        .update({ status: 'rejected' })
+        .eq('user_id', wd.user_id)
+        .eq('type', 'withdrawal_request')
+        .eq('meta->>withdrawal_id', withdrawalId);
+
+      return NextResponse.json({ success: true, status: 'rejected' });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (err) {
+    console.error('Admin withdrawals action error:', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
