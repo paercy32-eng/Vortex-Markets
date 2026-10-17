@@ -10,7 +10,7 @@ const pesajet = new PesaJet({
   webhookSecret: process.env.PESAJET_WEBHOOK_SECRET,
 });
 
-const MIN_DEPOSIT = 10000;
+const MIN_DEPOSIT = 500;
 
 export async function POST(req: NextRequest) {
   try {
