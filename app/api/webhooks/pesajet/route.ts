@@ -22,9 +22,10 @@ export async function POST(req: NextRequest) {
     const body = JSON.parse(rawBody);
     const { event, transactionId, reference } = body;
 
-    if (event === 'payment.completed') {
-      const supabase = getServiceClient();
+    const supabase = getServiceClient();
 
+    // 1. Handle Successful Payments
+    if (event === 'payment.completed') {
       const { data: deposit } = await supabase
         .from('payments')
         .select('*')
@@ -33,18 +34,15 @@ export async function POST(req: NextRequest) {
 
       if (!deposit) return NextResponse.json({ error: 'Deposit not found' }, { status: 404 });
       
-      // Prevent double crediting
       if (deposit.status === 'completed') {
         return NextResponse.json({ success: true, message: 'Already processed' });
       }
 
-      // Mark deposit as COMPLETED
       await supabase
         .from('payments')
         .update({ status: 'completed', reviewed_at: new Date().toISOString() })
         .eq('id', deposit.id);
 
-      // Credit user balance
       const { data: user } = await supabase
         .from('users')
         .select('balance')
@@ -58,7 +56,6 @@ export async function POST(req: NextRequest) {
           .eq('id', deposit.user_id);
       }
 
-      // Log transaction as COMPLETED
       await supabase.from('transactions').insert({
         user_id: deposit.user_id,
         type: 'deposit',
@@ -66,6 +63,23 @@ export async function POST(req: NextRequest) {
         status: 'completed',
         meta: { reference, transactionId, provider: body.provider },
       });
+    }
+
+    // 2. Handle Failed or Cancelled Payments
+    if (event === 'payment.failed' || event === 'payment.cancelled') {
+      const { data: deposit } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('reference', reference)
+        .maybeSingle();
+
+      if (deposit) {
+        // Mark as failed so it doesn't stay pending forever
+        await supabase
+          .from('payments')
+          .update({ status: 'failed', reviewed_at: new Date().toISOString() })
+          .eq('id', deposit.id);
+      }
     }
 
     return NextResponse.json({ received: true });
