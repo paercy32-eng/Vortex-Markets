@@ -49,19 +49,14 @@ export default function AdminDepositsPage() {
   const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<
-    'pending' | 'approved' | 'rejected' | 'all'
-  >('pending');
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('all');
 
   async function load(showSpinner = false) {
     if (showSpinner) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/admin/deposits?status=${filter}&t=` + Date.now(),
-        { cache: 'no-store' }
-      );
+      const res = await fetch(`/api/admin/deposits?status=${filter}&t=` + Date.now(), { cache: 'no-store' });
       const data = await res.json();
 
       if (!res.ok) {
@@ -95,22 +90,10 @@ export default function AdminDepositsPage() {
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-2xl mx-auto flex items-center justify-between px-5 py-4">
           <div>
-            <Link
-              href="/admin"
-              className="text-muted text-xs hover:text-primary"
-            >
-              ← Dashboard
-            </Link>
-            <h1 className="text-lg font-bold text-foreground leading-tight">
-              Deposits
-            </h1>
+            <Link href="/admin" className="text-muted text-xs hover:text-primary">← Dashboard</Link>
+            <h1 className="text-lg font-bold text-foreground leading-tight">Deposits</h1>
           </div>
-          <button
-            onClick={() => load(true)}
-            disabled={refreshing}
-            className="p-2 rounded-full text-muted hover:text-primary transition active:scale-95"
-            aria-label="Refresh"
-          >
+          <button onClick={() => load(true)} disabled={refreshing} className="p-2 rounded-full text-muted hover:text-primary transition active:scale-95" aria-label="Refresh">
             <RefreshIcon className={refreshing ? 'animate-spin-slow' : ''} />
           </button>
         </div>
@@ -121,15 +104,7 @@ export default function AdminDepositsPage() {
           {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => {
             const isActive = filter === f;
             return (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`py-2.5 rounded-full text-xs font-semibold capitalize transition ${
-                  isActive
-                    ? 'bg-primary text-[#FFFFFF]'
-                    : 'bg-card border border-border text-muted'
-                }`}
-              >
+              <button key={f} onClick={() => setFilter(f)} className={`py-2.5 rounded-full text-xs font-semibold capitalize transition ${isActive ? 'bg-primary text-[#FFFFFF]' : 'bg-card border border-border text-muted'}`}>
                 {f}
               </button>
             );
@@ -142,92 +117,32 @@ export default function AdminDepositsPage() {
           </div>
         ) : deposits.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-muted text-sm">
-              No {filter === 'all' ? '' : filter} deposits.
-            </p>
+            <p className="text-muted text-sm">No {filter === 'all' ? '' : filter} deposits.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {deposits.map((d) => {
-              const isPending = d.status === 'pending';
-              const hasTxid = !!d.transaction_id;
-
-              return (
-                <div key={d.id} className="card">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground font-semibold text-sm truncate">
-                        {d.user_name}
-                      </p>
-                      <p className="text-muted text-xs mt-0.5">
-                        {d.user_phone}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={statusPillClass(d.status)}>
-                        {d.status.toUpperCase()}
-                      </span>
-                      {isPending && hasTxid && (
-                        <span className="pill-primary text-[10px]">
-                          TXID SUBMITTED
-                        </span>
-                      )}
-                      {isPending && !hasTxid && (
-                        <span className="pill-muted text-[10px]">
-                          AWAITING PIN
-                        </span>
-                      )}
-                    </div>
+            {deposits.map((d) => (
+              <div key={d.id} className="card">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-foreground font-semibold text-sm truncate">{d.user_name}</p>
+                    <p className="text-muted text-xs mt-0.5">{d.user_phone}</p>
                   </div>
-
-                  <div className="row">
-                    <span className="row-label">Amount</span>
-                    <span className="row-value text-primary font-bold">
-                      {d.amount.toLocaleString()} UGX
-                    </span>
-                  </div>
-                  {d.network && (
-                    <div className="row">
-                      <span className="row-label">Network</span>
-                      <span className="row-value text-xs">{d.network}</span>
-                    </div>
-                  )}
-                  {d.sender_phone && (
-                    <div className="row">
-                      <span className="row-label">Sender Phone</span>
-                      <span className="row-value text-xs">
-                        {d.sender_phone}
-                      </span>
-                    </div>
-                  )}
-                  {d.transaction_id && (
-                    <div className="row">
-                      <span className="row-label">Transaction ID</span>
-                      <span className="row-value text-xs font-mono">
-                        {d.transaction_id}
-                      </span>
-                    </div>
-                  )}
-                  {d.reference && (
-                    <div className="row">
-                      <span className="row-label">Reference</span>
-                      <span className="row-value text-[10px] font-mono break-all">
-                        {d.reference}
-                      </span>
-                    </div>
-                  )}
-                  <div className="row">
-                    <span className="row-label">Date</span>
-                    <span className="row-value text-xs">
-                      {formatDate(d.created_at)}
-                    </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={statusPillClass(d.status)}>{d.status.toUpperCase()}</span>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="row"><span className="row-label">Amount</span><span className="row-value text-primary font-bold">{d.amount.toLocaleString()} UGX</span></div>
+                {d.network && <div className="row"><span className="row-label">Network</span><span className="row-value text-xs">{d.network}</span></div>}
+                {d.sender_phone && <div className="row"><span className="row-label">Sender Phone</span><span className="row-value text-xs">{d.sender_phone}</span></div>}
+                {d.reference && <div className="row"><span className="row-label">Reference</span><span className="row-value text-[10px] font-mono break-all">{d.reference}</span></div>}
+                <div className="row"><span className="row-label">Date</span><span className="row-value text-xs">{formatDate(d.created_at)}</span></div>
+              </div>
+            ))}
           </div>
         )}
       </main>
     </div>
   );
-                  }
+    }
