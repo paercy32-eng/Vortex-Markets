@@ -12,13 +12,6 @@ const pesajet = new PesaJet({
 
 const MIN_DEPOSIT = 10000;
 
-function normalizePhone(input: string): string {
-  let phone = (input || '').replace(/[^\d]/g, '');
-  if (phone.startsWith('0')) phone = '256' + phone.slice(1);
-  if (phone.startsWith('7') && phone.length === 9) phone = '256' + phone;
-  return phone;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -34,6 +27,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Phone and provider (mtn/airtel) are required' }, { status: 400 });
     }
 
+    // Use official PesaJet utility to normalize the phone number to +256...
+    const formattedPhone = pesajet.utils.formatPhoneNumber(phone);
+
     const feePct = Number(process.env.PESAJET_FEE_PERCENTAGE || 0.026);
     const feeFlat = Number(process.env.PESAJET_FEE_FLAT || 0);
     const totalCharge = Math.ceil((numAmount + feeFlat) / (1 - feePct));
@@ -41,9 +37,9 @@ export async function POST(req: NextRequest) {
     const supabase = getServiceClient();
     const reference = `VRTX-DEP-${Date.now()}-${user.id.slice(0, 6)}`;
 
-    // Save pending deposit first (using 'payments' table)
+    // Save pending deposit using the 'payments' table
     const { data: deposit, error: insErr } = await supabase
-      .from('payments') 
+      .from('payments') // 👈 Correct table name
       .insert({
         user_id: user.id,
         amount: numAmount,
@@ -58,10 +54,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create deposit' }, { status: 500 });
     }
 
+    // Call PesaJet to trigger the PIN prompt
     const payment = await pesajet.payments.create({
       amount: totalCharge,
       currency: 'UGX',
-      phoneNumber: normalizePhone(phone),
+      phoneNumber: formattedPhone, // 👈 Using the official formatter
       provider: provider as 'mtn' | 'airtel',
       reference,
       description: `Vortex Markets deposit for ${user.name}`,
