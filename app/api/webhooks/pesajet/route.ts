@@ -11,11 +11,9 @@ const pesajet = new PesaJet({
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Get the raw body for signature verification
     const rawBody = await req.text();
     const signature = req.headers.get('x-webhook-signature') || '';
 
-    // 2. Verify signature using PesaJet SDK
     const isValid = pesajet.webhooks.verify(rawBody, signature);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -27,23 +25,26 @@ export async function POST(req: NextRequest) {
     if (event === 'payment.completed') {
       const supabase = getServiceClient();
 
-      // 3. Find the deposit using the 'payments' table
       const { data: deposit } = await supabase
-        .from('payments') // 👈 Correct table name
+        .from('payments')
         .select('*')
         .eq('reference', reference)
         .maybeSingle();
 
       if (!deposit) return NextResponse.json({ error: 'Deposit not found' }, { status: 404 });
-      if (deposit.status === 'approved') return NextResponse.json({ success: true, message: 'Already processed' });
+      
+      // Prevent double crediting
+      if (deposit.status === 'completed') {
+        return NextResponse.json({ success: true, message: 'Already processed' });
+      }
 
-      // 4. Mark deposit as approved
+      // Mark deposit as COMPLETED
       await supabase
-        .from('payments') // 👈 Correct table name
-        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .from('payments')
+        .update({ status: 'completed', reviewed_at: new Date().toISOString() })
         .eq('id', deposit.id);
 
-      // 5. Credit the user's balance
+      // Credit user balance
       const { data: user } = await supabase
         .from('users')
         .select('balance')
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
           .eq('id', deposit.user_id);
       }
 
-      // 6. Log transaction
+      // Log transaction as COMPLETED
       await supabase.from('transactions').insert({
         user_id: deposit.user_id,
         type: 'deposit',
