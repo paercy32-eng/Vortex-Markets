@@ -12,7 +12,6 @@ const pesajet = new PesaJet({
 
 const MIN_DEPOSIT = 10000;
 
-// Normalize phone to 256XXXXXXXXX
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -35,18 +34,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Phone and provider (mtn/airtel) are required' }, { status: 400 });
     }
 
-    // --- Gross-up fee calculation ---
     const feePct = Number(process.env.PESAJET_FEE_PERCENTAGE || 0.026);
     const feeFlat = Number(process.env.PESAJET_FEE_FLAT || 0);
-    // This formula ensures the user receives exactly `numAmount` after the fee is deducted
     const totalCharge = Math.ceil((numAmount + feeFlat) / (1 - feePct));
 
     const supabase = getServiceClient();
     const reference = `VRTX-DEP-${Date.now()}-${user.id.slice(0, 6)}`;
 
-    // Save pending deposit first
+    // Save pending deposit first (using 'payments' table)
     const { data: deposit, error: insErr } = await supabase
-      .from('tesla_deposits')
+      .from('payments') 
       .insert({
         user_id: user.id,
         amount: numAmount,
@@ -61,7 +58,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create deposit' }, { status: 500 });
     }
 
-    // Send prompt via PesaJet
     const payment = await pesajet.payments.create({
       amount: totalCharge,
       currency: 'UGX',
