@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insErr || !deposit) {
-      console.error('Insert error:', insErr);
-      return NextResponse.json({ error: 'Failed to create deposit' }, { status: 500 });
+  console.error('Insert error:', insErr);
+  return NextResponse.json({ error: insErr?.message || 'Failed to create deposit' }, { status: 500 });
     }
 
     // Call PesaJet to trigger the PIN prompt
