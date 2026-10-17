@@ -46,7 +46,8 @@ function statusLabel(status: string): string {
   const s = (status || '').toLowerCase();
   if (s === 'pending') return 'REVIEWING';
   if (s === 'approved' || s === 'completed') return 'COMPLETED';
-  if (s === 'rejected' || s === 'failed') return 'REJECTED';
+  if (s === 'rejected') return 'REJECTED';
+  if (s === 'failed') return 'FAILED'; // <-- Shows FAILED for cancelled PINs
   return s.toUpperCase();
 }
 
