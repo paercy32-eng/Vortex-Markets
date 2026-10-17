@@ -309,44 +309,76 @@ function RechargeModal({
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [sent, setSent] = useState(false);
+  const [reference, setReference] = useState('');
+  const [statusMsg, setStatusMsg] = useState('Waiting for PIN...');
 
   const numericAmount = Number(amount) || 0;
-  
-  // Calculate fees dynamically for display
-  const fee = Math.ceil(numericAmount * PESAJET_FEE_PCT);
+  const fee = Math.ceil(numericAmount * 0.026);
   const totalCharge = numericAmount + fee;
+
+  // Polling effect
+  useEffect(() => {
+    if (!sent || !reference) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      
+      // Stop checking after 20 attempts (1 minute)
+      if (attempts > 20) {
+        clearInterval(interval);
+        setStatusMsg('Timeout. Please check your transaction history later.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/recharge/status?reference=${reference}`);
+        const data = await res.json();
+
+        if (data.status === 'approved') {
+          clearInterval(interval);
+          setStatusMsg('Payment Approved!');
+          setTimeout(() => {
+            onSuccess();
+          }, 1500);
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          setStatusMsg('Payment Failed or Cancelled.');
+        }
+      } catch (err) {
+        // Ignore network errors and try again
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [sent, reference, onSuccess]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg('');
 
-    if (numericAmount < MIN_DEPOSIT) {
-      setMsg(`Minimum deposit is ${MIN_DEPOSIT.toLocaleString()} UGX`);
+    if (numericAmount < 500) {
+      setMsg(`Minimum deposit is 500 UGX`);
       return;
     }
-
-    const cleanPhone = phone.trim();
-    if (!/^\+?\d{9,15}$/.test(cleanPhone)) {
-      setMsg('Enter a valid phone number.');
+    if (!phone) {
+      setMsg('Enter phone number.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch('/api/recharge', { // Calls the PesaJet route we just created
+      const res = await fetch('/api/recharge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: numericAmount,
-          phone: cleanPhone,
-          provider: provider,
-        }),
+        body: JSON.stringify({ amount: numericAmount, phone, provider }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setMsg(data.error || 'Failed to send payment request.');
       } else {
+        setReference(data.reference);
         setSent(true);
       }
     } catch {
@@ -371,86 +403,60 @@ function RechargeModal({
 
         {!sent ? (
           <form onSubmit={submit} className="space-y-4">
+            {/* ... (Keep all the form fields exactly as they are: Amount, Provider, Phone) ... */}
             <div>
               <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">Amount to Receive (UGX)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
-                placeholder={`Min ${MIN_DEPOSIT.toLocaleString()}`}
-                required
-              />
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm" placeholder="Min 500" required />
             </div>
-
             <div>
               <label className="block text-[10px] text-[#94A3B8] font-bold mb-2 uppercase tracking-wider">Select Network</label>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setProvider('mtn')}
-                  className={`py-3 rounded-xl text-xs font-bold transition border ${
-                    provider === 'mtn' ? 'bg-[#FFCC00] text-black border-transparent shadow-lg shadow-[#FFCC00]/20' : 'bg-[#0F172A] text-[#94A3B8] border-[#334155]'
-                  }`}
-                >
-                  MTN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProvider('airtel')}
-                  className={`py-3 rounded-xl text-xs font-bold transition border ${
-                    provider === 'airtel' ? 'bg-[#E40000] text-white border-transparent shadow-lg shadow-[#E40000]/20' : 'bg-[#0F172A] text-[#94A3B8] border-[#334155]'
-                  }`}
-                >
-                  Airtel
-                </button>
+                <button type="button" onClick={() => setProvider('mtn')} className={`py-3 rounded-xl text-xs font-bold transition border ${provider === 'mtn' ? 'bg-[#FFCC00] text-black border-transparent' : 'bg-[#0F172A] text-[#94A3B8] border-[#334155]'}`}>MTN</button>
+                <button type="button" onClick={() => setProvider('airtel')} className={`py-3 rounded-xl text-xs font-bold transition border ${provider === 'airtel' ? 'bg-[#E40000] text-white border-transparent' : 'bg-[#0F172A] text-[#94A3B8] border-[#334155]'}`}>Airtel</button>
               </div>
             </div>
-
             <div>
               <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">Mobile Money Number</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0700123456"
-                className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm"
-                required
-              />
+              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0700123456" className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm" required />
             </div>
 
             {numericAmount > 0 && (
               <div className="bg-[#0F172A] border border-[#334155] rounded-xl p-3">
-                <div className="flex justify-between py-1">
-                  <span className="text-[#94A3B8] text-xs">You receive</span>
-                  <span className="text-[#F8FAFC] text-xs font-semibold">{numericAmount.toLocaleString()} UGX</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-[#94A3B8] text-xs">PesaJet Fee</span>
-                  <span className="text-[#F87171] text-xs font-semibold">+{fee.toLocaleString()} UGX</span>
-                </div>
-                <div className="flex justify-between py-1 border-t border-[#334155] mt-1 pt-2">
-                  <span className="text-[#94A3B8] text-xs">Total to Pay</span>
-                  <span className="text-[#E0A44C] text-sm font-bold">{totalCharge.toLocaleString()} UGX</span>
-                </div>
+                <div className="flex justify-between py-1"><span className="text-[#94A3B8] text-xs">You receive</span><span className="text-[#F8FAFC] text-xs font-semibold">{numericAmount.toLocaleString()} UGX</span></div>
+                <div className="flex justify-between py-1"><span className="text-[#94A3B8] text-xs">PesaJet Fee</span><span className="text-[#F87171] text-xs font-semibold">+{fee.toLocaleString()} UGX</span></div>
+                <div className="flex justify-between py-1 border-t border-[#334155] mt-1 pt-2"><span className="text-[#94A3B8] text-xs">Total to Pay</span><span className="text-[#E0A44C] text-sm font-bold">{totalCharge.toLocaleString()} UGX</span></div>
               </div>
             )}
 
-            {msg && (
-              <div className="text-sm text-[#F87171] bg-[#450A0A] rounded-xl px-3 py-2 border border-[#7F1D1D]">{msg}</div>
-            )}
+            {msg && <div className="text-sm text-[#F87171] bg-[#450A0A] rounded-xl px-3 py-2 border border-[#7F1D1D]">{msg}</div>}
 
             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#C8833A] to-[#E0A44C] text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition shadow-lg shadow-[#C8833A]/20 disabled:opacity-50">
               {loading ? 'Sending Prompt...' : 'Send Payment Request'}
             </button>
           </form>
         ) : (
-          <div className="text-center py-4">
-            <div className="text-5xl mb-3">📱</div>
-            <div className="font-semibold text-[#F8FAFC] mb-1">Check your phone</div>
-            <div className="text-sm text-[#94A3B8] mb-4">Enter your mobile money PIN to complete the payment.</div>
-            <div className="text-xs text-[#E0A44C] font-semibold mb-2">Status: Reviewing</div>
-            <button onClick={onClose} className="mt-6 text-xs text-[#94A3B8] underline">Close</button>
+          <div className="text-center py-8">
+            {statusMsg === 'Payment Approved!' ? (
+              <div className="text-5xl mb-3">✅</div>
+            ) : (
+              <div className="text-5xl mb-3 animate-pulse">📱</div>
+            )}
+            
+            <div className="font-semibold text-[#F8FAFC] text-lg mb-2">
+              {statusMsg === 'Payment Approved!' ? 'Payment Successful' : 'Check your phone'}
+            </div>
+            
+            <div className="text-sm text-[#94A3B8] mb-4">
+              {statusMsg === 'Payment Approved!' 
+                ? 'Your balance has been credited.'
+                : 'Enter your mobile money PIN to complete the payment.'}
+            </div>
+
+            <div className={`text-xs font-semibold mb-4 ${statusMsg === 'Payment Approved!' ? 'text-[#34D399]' : 'text-[#E0A44C]'}`}>
+              {statusMsg}
+            </div>
+
+            <button onClick={onClose} className="mt-4 text-xs text-[#94A3B8] underline">Close</button>
           </div>
         )}
       </div>
