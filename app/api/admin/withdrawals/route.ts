@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') ?? 'pending';
 
     let query = supabase
-      .from('withdrawals') // 👈 Correct table name
+      .from('withdrawals')
       .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
 
     if (status === 'approved') {
@@ -62,13 +62,14 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceClient();
     const { data: wd } = await supabase
-      .from('withdrawals') // 👈 Correct table name
+      .from('withdrawals')
       .select('id, user_id, amount, status, phone, full_name, meta')
       .eq('id', withdrawalId)
       .maybeSingle();
 
     if (!wd) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
 
+    // APPROVE → Send PesaJet & Mark COMPLETED
     if (action === 'approve') {
       if (wd.status !== 'pending') return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
 
@@ -76,10 +77,8 @@ export async function POST(req: NextRequest) {
       
       const payoutPhone = pesajet.utils.formatPhoneNumber(wd.phone || payer?.phone || '');
       const payoutName = wd.full_name || payer?.name || 'User';
-      const userNet = Math.round(Number(wd.amount) * 0.85); // 15% fee deduction
+      const userNet = Math.round(Number(wd.amount) * 0.85);
       const payoutRef = `VRTX-WD-${Date.now()}-${wd.id.slice(0,4)}`;
-
-      // Detect provider from the phone number or default to 'mtn'
       const detectedProvider = pesajet.utils.detectProvider(payoutPhone) || 'mtn';
 
       try {
@@ -87,7 +86,7 @@ export async function POST(req: NextRequest) {
           type: 'DISBURSEMENT',
           amount: userNet,
           currency: 'UGX',
-          phoneNumber: payoutPhone, // 👈 Using official formatter
+          phoneNumber: payoutPhone,
           provider: detectedProvider as 'mtn' | 'airtel',
           reference: payoutRef,
           description: `Vortex Markets withdrawal for ${payoutName}`,
@@ -98,9 +97,9 @@ export async function POST(req: NextRequest) {
       }
 
       await supabase
-        .from('withdrawals') // 👈 Correct table name
+        .from('withdrawals')
         .update({
-          status: 'completed',
+          status: 'completed', // <-- Shows as Completed
           reviewed_at: new Date().toISOString(),
           meta: { ...wd.meta, payout_ref: payoutRef, user_net: userNet },
         })
@@ -120,16 +119,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, status: 'completed' });
     }
 
+    // REJECT → Refund & Mark REJECTED
     if (action === 'reject') {
+      if (wd.status !== 'pending') return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
+
       const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).maybeSingle();
 
+      // Refund balance
       await supabase
         .from('users')
         .update({ balance: Number(user?.balance ?? 0) + Number(wd.amount) })
         .eq('id', wd.user_id);
 
+      // Mark as rejected
       await supabase
-        .from('withdrawals') // 👈 Correct table name
+        .from('withdrawals')
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .eq('id', withdrawalId);
 
