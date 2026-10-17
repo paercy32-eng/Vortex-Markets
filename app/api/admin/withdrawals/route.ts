@@ -12,13 +12,6 @@ const pesajet = new PesaJet({
   webhookSecret: process.env.PESAJET_WEBHOOK_SECRET,
 });
 
-function normalizePhone(input: string): string {
-  let phone = (input || '').replace(/[^\d]/g, '');
-  if (phone.startsWith('0')) phone = '256' + phone.slice(1);
-  if (phone.startsWith('7') && phone.length === 9) phone = '256' + phone;
-  return phone;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
@@ -29,7 +22,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') ?? 'pending';
 
     let query = supabase
-      .from('withdrawals') // Corrected table name
+      .from('withdrawals') // 👈 Correct table name
       .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
 
     if (status === 'approved') {
@@ -40,27 +33,16 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) {
-      return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
 
     const userIds = Array.from(new Set((data ?? []).map((w) => w.user_id)));
     let userMap: Record<string, { name: string; phone: string }> = {};
     if (userIds.length > 0) {
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, name, phone')
-        .in('id', userIds);
-      (users ?? []).forEach((u) => {
-        userMap[u.id] = { name: u.name, phone: u.phone };
-      });
+      const { data: users } = await supabase.from('users').select('id, name, phone').in('id', userIds);
+      (users ?? []).forEach((u) => { userMap[u.id] = { name: u.name, phone: u.phone }; });
     }
 
-    const enriched = (data ?? []).map((w) => ({
-      ...w,
-      users: userMap[w.user_id] ?? null,
-    }));
-
+    const enriched = (data ?? []).map((w) => ({ ...w, users: userMap[w.user_id] ?? null }));
     return NextResponse.json({ withdrawals: enriched });
   } catch (err) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -74,13 +56,13 @@ export async function POST(req: NextRequest) {
 
     const { withdrawalId, action } = await req.json();
 
-    if (!withdrawalId || !['approve', 'reject', 'mark_completed', 'mark_failed'].includes(action)) {
+    if (!withdrawalId || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
     const supabase = getServiceClient();
     const { data: wd } = await supabase
-      .from('withdrawals') // Corrected table name
+      .from('withdrawals') // 👈 Correct table name
       .select('id, user_id, amount, status, phone, full_name, meta')
       .eq('id', withdrawalId)
       .maybeSingle();
@@ -88,29 +70,25 @@ export async function POST(req: NextRequest) {
     if (!wd) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
 
     if (action === 'approve') {
-      if (wd.status !== 'pending') {
-        return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
-      }
+      if (wd.status !== 'pending') return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
 
-      const { data: payer } = await supabase
-        .from('users')
-        .select('phone, name')
-        .eq('id', wd.user_id)
-        .maybeSingle();
-
-      const payoutPhoneRaw = wd.phone || payer?.phone || '';
-      const payoutPhone = normalizePhone(payoutPhoneRaw);
+      const { data: payer } = await supabase.from('users').select('phone, name').eq('id', wd.user_id).maybeSingle();
+      
+      const payoutPhone = pesajet.utils.formatPhoneNumber(wd.phone || payer?.phone || '');
       const payoutName = wd.full_name || payer?.name || 'User';
-      const userNet = Math.round(Number(wd.amount) * 0.85);
+      const userNet = Math.round(Number(wd.amount) * 0.85); // 15% fee deduction
       const payoutRef = `VRTX-WD-${Date.now()}-${wd.id.slice(0,4)}`;
+
+      // Detect provider from the phone number or default to 'mtn'
+      const detectedProvider = pesajet.utils.detectProvider(payoutPhone) || 'mtn';
 
       try {
         await pesajet.payments.create({
           type: 'DISBURSEMENT',
           amount: userNet,
           currency: 'UGX',
-          phoneNumber: payoutPhone,
-          provider: 'mtn',
+          phoneNumber: payoutPhone, // 👈 Using official formatter
+          provider: detectedProvider as 'mtn' | 'airtel',
           reference: payoutRef,
           description: `Vortex Markets withdrawal for ${payoutName}`,
         });
@@ -120,7 +98,7 @@ export async function POST(req: NextRequest) {
       }
 
       await supabase
-        .from('withdrawals') // Corrected table name
+        .from('withdrawals') // 👈 Correct table name
         .update({
           status: 'completed',
           reviewed_at: new Date().toISOString(),
@@ -143,11 +121,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'reject') {
-      const { data: user } = await supabase
-        .from('users')
-        .select('balance')
-        .eq('id', wd.user_id)
-        .maybeSingle();
+      const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).maybeSingle();
 
       await supabase
         .from('users')
@@ -155,7 +129,7 @@ export async function POST(req: NextRequest) {
         .eq('id', wd.user_id);
 
       await supabase
-        .from('withdrawals') // Corrected table name
+        .from('withdrawals') // 👈 Correct table name
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .eq('id', withdrawalId);
 
@@ -171,7 +145,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
-    console.error('Admin withdrawals action error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
