@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getServiceClient } from '@/lib/supabase';
+import { PesaJet } from '@pesajet/sdk';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
+const pesajet = new PesaJet({
+  apiKey: process.env.PESAJET_API_KEY!,
+  webhookSecret: process.env.PESAJET_WEBHOOK_SECRET,
+});
+
+const MIN_DEPOSIT = 10000;
+
+// Normalize phone to 256XXXXXXXXX
 function normalizePhone(input: string): string {
   let phone = (input || '').replace(/[^\d]/g, '');
   if (phone.startsWith('0')) phone = '256' + phone.slice(1);
@@ -13,106 +20,67 @@ function normalizePhone(input: string): string {
   return phone;
 }
 
-function isValidPhone(phone: string): boolean {
-  return /^2567\d{8}$/.test(phone);
-}
-
-const MIN_DEPOSIT = 10000;
-
-// ==========================================
-// POST /api/recharge
-// Body: { amount, phone }
-//
-// Creates a PENDING deposit with the sender's
-// phone. User will then pay the merchant code
-// and submit their transaction ID separately.
-// Admin verifies and approves.
-// ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    const { amount, phone, provider } = await req.json();
+    const numAmount = Number(amount);
+
+    if (!numAmount || numAmount < MIN_DEPOSIT) {
+      return NextResponse.json({ error: `Minimum deposit is UGX ${MIN_DEPOSIT.toLocaleString()}` }, { status: 400 });
+    }
+    if (!phone || !provider) {
+      return NextResponse.json({ error: 'Phone and provider (mtn/airtel) are required' }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { amount: rawAmount, phone: rawPhone } = body || {};
-    const amount = Number(rawAmount);
-
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Enter a valid amount' },
-        { status: 400 }
-      );
-    }
-
-    if (amount < MIN_DEPOSIT) {
-      return NextResponse.json(
-        { error: `Minimum deposit is ${MIN_DEPOSIT.toLocaleString()} UGX` },
-        { status: 400 }
-      );
-    }
-
-    if (!rawPhone || typeof rawPhone !== 'string') {
-      return NextResponse.json(
-        { error: 'Mobile money number is required' },
-        { status: 400 }
-      );
-    }
-
-    const phone = normalizePhone(rawPhone);
-
-    if (!isValidPhone(phone)) {
-      return NextResponse.json(
-        { error: 'Enter a valid Ugandan phone number' },
-        { status: 400 }
-      );
-    }
+    // --- Gross-up fee calculation ---
+    const feePct = Number(process.env.PESAJET_FEE_PERCENTAGE || 0.026);
+    const feeFlat = Number(process.env.PESAJET_FEE_FLAT || 0);
+    // This formula ensures the user receives exactly `numAmount` after the fee is deducted
+    const totalCharge = Math.ceil((numAmount + feeFlat) / (1 - feePct));
 
     const supabase = getServiceClient();
+    const reference = `VRTX-DEP-${Date.now()}-${user.id.slice(0, 6)}`;
 
-    const reference = `VRTX-${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2, 8)
-      .toUpperCase()}`;
-
-    const { data: payment, error } = await supabase
-      .from('payments')
+    // Save pending deposit first
+    const { data: deposit, error: insErr } = await supabase
+      .from('tesla_deposits')
       .insert({
         user_id: user.id,
-        amount,
-        type: 'deposit',
+        amount: numAmount,
         status: 'pending',
         reference,
-        sender_phone: phone,
       })
-      .select('id, amount, status, reference, sender_phone, created_at')
+      .select('id, reference, amount, status')
       .single();
 
-    if (error || !payment) {
-      console.error('Recharge insert error:', error);
-      return NextResponse.json(
-        { error: 'Could not create deposit request' },
-        { status: 500 }
-      );
+    if (insErr || !deposit) {
+      console.error('Insert error:', insErr);
+      return NextResponse.json({ error: 'Failed to create deposit' }, { status: 500 });
     }
+
+    // Send prompt via PesaJet
+    const payment = await pesajet.payments.create({
+      amount: totalCharge,
+      currency: 'UGX',
+      phoneNumber: normalizePhone(phone),
+      provider: provider as 'mtn' | 'airtel',
+      reference,
+      description: `Vortex Markets deposit for ${user.name}`,
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Deposit created. Complete the payment and submit your transaction ID.',
-      payment: {
-        ...payment,
-        amount: Number(payment.amount) || 0,
-      },
+      depositId: deposit.id,
+      reference,
+      totalCharge,
+      fee: totalCharge - numAmount,
+      message: 'A PIN prompt was sent to your phone. Enter your PIN to complete.',
     });
   } catch (err: any) {
-    console.error('Recharge endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    console.error('PesaJet deposit error:', err);
+    return NextResponse.json({ error: err.message || 'Payment request failed' }, { status: 500 });
   }
-  }
+}
