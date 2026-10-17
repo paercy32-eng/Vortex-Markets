@@ -11,9 +11,11 @@ const pesajet = new PesaJet({
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Get the raw body for signature verification
     const rawBody = await req.text();
     const signature = req.headers.get('x-webhook-signature') || '';
 
+    // 2. Verify signature using PesaJet SDK
     const isValid = pesajet.webhooks.verify(rawBody, signature);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -25,9 +27,9 @@ export async function POST(req: NextRequest) {
     if (event === 'payment.completed') {
       const supabase = getServiceClient();
 
-      // Find the deposit using 'payments' table
+      // 3. Find the deposit using the 'payments' table
       const { data: deposit } = await supabase
-        .from('payments')
+        .from('payments') // 👈 Correct table name
         .select('*')
         .eq('reference', reference)
         .maybeSingle();
@@ -35,13 +37,13 @@ export async function POST(req: NextRequest) {
       if (!deposit) return NextResponse.json({ error: 'Deposit not found' }, { status: 404 });
       if (deposit.status === 'approved') return NextResponse.json({ success: true, message: 'Already processed' });
 
-      // Mark deposit as approved
+      // 4. Mark deposit as approved
       await supabase
-        .from('payments')
+        .from('payments') // 👈 Correct table name
         .update({ status: 'approved', reviewed_at: new Date().toISOString() })
         .eq('id', deposit.id);
 
-      // Credit balance
+      // 5. Credit the user's balance
       const { data: user } = await supabase
         .from('users')
         .select('balance')
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
           .eq('id', deposit.user_id);
       }
 
-      // Log transaction
+      // 6. Log transaction
       await supabase.from('transactions').insert({
         user_id: deposit.user_id,
         type: 'deposit',
