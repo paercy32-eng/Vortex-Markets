@@ -4,7 +4,7 @@ export const fetchCache = 'force-no-store';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
-import { getCurrentAdmin } from '@/lib/auth'; // 👈 Correct import for Vortex
+import { getCurrentAdmin } from '@/lib/auth'; 
 import { PesaJet } from '@pesajet/sdk';
 
 const pesajet = new PesaJet({
@@ -19,7 +19,6 @@ function normalizePhone(input: string): string {
   return phone;
 }
 
-// GET — list withdrawals
 export async function GET(req: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') ?? 'pending';
 
     let query = supabase
-      .from('tesla_withdrawals')
+      .from('withdrawals') // Corrected table name
       .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
 
     if (status === 'approved') {
@@ -68,7 +67,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST — approve or reject
 export async function POST(req: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
@@ -82,16 +80,13 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceClient();
     const { data: wd } = await supabase
-      .from('tesla_withdrawals')
+      .from('withdrawals') // Corrected table name
       .select('id, user_id, amount, status, phone, full_name, meta')
       .eq('id', withdrawalId)
       .maybeSingle();
 
     if (!wd) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
 
-    // ==============================
-    // APPROVE (Send via PesaJet)
-    // ==============================
     if (action === 'approve') {
       if (wd.status !== 'pending') {
         return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
@@ -106,17 +101,16 @@ export async function POST(req: NextRequest) {
       const payoutPhoneRaw = wd.phone || payer?.phone || '';
       const payoutPhone = normalizePhone(payoutPhoneRaw);
       const payoutName = wd.full_name || payer?.name || 'User';
-      const userNet = Math.round(Number(wd.amount) * 0.85); // 15% fee deduction
+      const userNet = Math.round(Number(wd.amount) * 0.85);
       const payoutRef = `VRTX-WD-${Date.now()}-${wd.id.slice(0,4)}`;
 
       try {
-        // Send disbursement via PesaJet
         await pesajet.payments.create({
           type: 'DISBURSEMENT',
           amount: userNet,
           currency: 'UGX',
           phoneNumber: payoutPhone,
-          provider: 'mtn', // Change to 'airtel' if needed, or implement logic
+          provider: 'mtn',
           reference: payoutRef,
           description: `Vortex Markets withdrawal for ${payoutName}`,
         });
@@ -125,9 +119,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: payoutErr.message || 'PesaJet payout failed' }, { status: 400 });
       }
 
-      // Update withdrawal status
       await supabase
-        .from('tesla_withdrawals')
+        .from('withdrawals') // Corrected table name
         .update({
           status: 'completed',
           reviewed_at: new Date().toISOString(),
@@ -135,7 +128,6 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', withdrawalId);
 
-      // Update the transaction log
       await supabase
         .from('transactions')
         .update({
@@ -150,9 +142,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, status: 'completed' });
     }
 
-    // ==============================
-    // REJECT
-    // ==============================
     if (action === 'reject') {
       const { data: user } = await supabase
         .from('users')
@@ -166,7 +155,7 @@ export async function POST(req: NextRequest) {
         .eq('id', wd.user_id);
 
       await supabase
-        .from('tesla_withdrawals')
+        .from('withdrawals') // Corrected table name
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .eq('id', withdrawalId);
 
