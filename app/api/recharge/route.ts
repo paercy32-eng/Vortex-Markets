@@ -38,16 +38,19 @@ export async function POST(req: NextRequest) {
     const reference = `VRTX-DEP-${Date.now()}-${user.id.slice(0, 6)}`;
 
     // Save pending deposit using the 'payments' table
-    const { data: deposit, error: insErr } = await supabase
-      .from('payments') // 👈 Correct table name
-      .insert({
-        user_id: user.id,
-        amount: numAmount,
-        status: 'pending',
-        reference,
-      })
-      .select('id, reference, amount, status')
-      .single();
+const { data: deposit, error: insErr } = await supabase
+  .from('payments')
+  .insert({
+    user_id: user.id,
+    amount: numAmount,
+    status: 'pending',
+    reference,
+    type: 'deposit',             // 👈 Added
+    network: provider,           // 👈 Added ('mtn' or 'airtel')
+    sender_phone: formattedPhone // 👈 Added
+  })
+  .select('id, reference, amount, status')
+  .single();
 
     if (insErr || !deposit) {
   console.error('Insert error:', insErr);
