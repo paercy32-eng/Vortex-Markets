@@ -8,7 +8,6 @@ import { CloseIcon, ChevronRightIcon } from '@/components/icons';
 
 const MIN_WITHDRAWAL = 5000;
 const WITHDRAWAL_FEE_RATE = 0.15;
-const MIN_DEPOSIT = 10000;
 const PESAJET_FEE_PCT = 0.026;
 
 const TELEGRAM_LINK = 'https://t.me/+XXU8Ig4lhRQyY2U0';
@@ -219,6 +218,19 @@ function RechargeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [sent, setSent] = useState(false);
+  
+  // 👈 New state to hold the database minimum deposit
+  const [minDeposit, setMinDeposit] = useState(10000);
+
+  // 👈 Fetch the minimum deposit when the modal opens
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.minDeposit) setMinDeposit(data.minDeposit);
+      })
+      .catch(() => {});
+  }, []);
 
   const numericAmount = Number(amount) || 0;
   const fee = Math.ceil(numericAmount * PESAJET_FEE_PCT);
@@ -228,8 +240,8 @@ function RechargeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
     e.preventDefault();
     setMsg('');
 
-    if (numericAmount < MIN_DEPOSIT) {
-      setMsg(`Minimum deposit is ${MIN_DEPOSIT.toLocaleString()} UGX`);
+    if (numericAmount < minDeposit) {
+      setMsg(`Minimum deposit is ${minDeposit.toLocaleString()} UGX`);
       return;
     }
     if (!phone) {
@@ -273,7 +285,7 @@ function RechargeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-[10px] text-[#94A3B8] font-bold mb-1 uppercase tracking-wider">Amount to Receive (UGX)</label>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm" placeholder="Min 500" required />
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-3 text-[#F8FAFC] placeholder-[#475569] focus:outline-none focus:border-[#C8833A] transition text-sm" placeholder={`Min ${minDeposit.toLocaleString()}`} required />
             </div>
             <div>
               <label className="block text-[10px] text-[#94A3B8] font-bold mb-2 uppercase tracking-wider">Select Network</label>
