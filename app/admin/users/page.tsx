@@ -11,14 +11,24 @@ interface AdminUser {
   name: string;
   phone: string;
   balance: number;
-  referral_code: string;
-  referred_by: string | null;
-  is_bound: boolean;
-  bound_phone: string | null;
-  bound_full_name: string | null;
+  total_deposited: number;
+  total_invested: number;
+  total_withdrawn: number;
   is_banned: boolean;
-  active_modules: number;
+  banned_reason: string | null;
+  referral_code: string;
   created_at: string;
+  valid_invites: number;
+  active_rentals: number;
+}
+
+interface ProductOption {
+  id: string;
+  name: string;
+  price: number;
+  cycle_days: number;
+  daily_return: number;
+  is_active: boolean;
 }
 
 interface UserDetail {
@@ -33,6 +43,8 @@ interface UserDetail {
     bound_full_name: string | null;
     is_banned: boolean;
     created_at: string;
+    total_referrals: number; // 👈 Added
+    active_referrals: number; // 👈 Added
   };
   modules: Array<{
     id: string;
@@ -54,14 +66,6 @@ interface UserDetail {
     status: string;
     created_at: string;
   }>;
-}
-
-interface ProductOption {
-  id: string;
-  name: string;
-  price: number;
-  cycle_days: number;
-  daily_return: number;
 }
 
 function formatDate(iso: string): string {
@@ -114,205 +118,149 @@ function transactionLabel(type: string): string {
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [showGrantPicker, setShowGrantPicker] = useState(false);
 
-  async function loadProducts() {
-    try {
-      const res = await fetch('/api/admin/products?t=' + Date.now(), {
-        cache: 'no-store',
-      });
-      const data = await res.json();
-      if (res.ok) setProducts(data.products || []);
-    } catch {}
+  async function loadUsers(search = '') {
+    setLoading(true);
+    const url = search
+      ? `/api/admin/users?q=${encodeURIComponent(search)}&t=${Date.now()}`
+      : `/api/admin/users?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.status === 401) {
+      router.replace('/admin/login');
+      return;
+    }
+    const data = await res.json();
+    setUsers(data.users ?? []);
+    setLoading(false);
   }
 
-  async function load(showSpinner = false) {
-    if (showSpinner) setRefreshing(true);
-    else setLoading(true);
-
-    try {
-      const url = search
-        ? `/api/admin/users?q=${encodeURIComponent(search)}&t=` + Date.now()
-        : `/api/admin/users?t=` + Date.now();
-
-      const res = await fetch(url, { cache: 'no-store' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          router.replace('/admin/login');
-          return;
-        }
-        toast.error(data.error || 'Could not load users');
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-
-      setUsers(data.users || []);
-      setLoading(false);
-      setRefreshing(false);
-    } catch {
-      toast.error('Network error');
-      setLoading(false);
-      setRefreshing(false);
-    }
+  async function loadProducts() {
+    const res = await fetch(`/api/admin/products?t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setProducts(data.products ?? []);
   }
 
   useEffect(() => {
-    load();
+    loadUsers();
     loadProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router]);
 
-  function handleSearchSubmit(e: React.FormEvent) {
+  function onSearch(e: React.FormEvent) {
     e.preventDefault();
-    load();
-  }
-
-  function handleClearSearch() {
-    setSearch('');
-    setTimeout(() => load(), 0);
+    loadUsers(query);
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-2xl mx-auto flex items-center justify-between px-5 py-4">
-          <div>
-            <Link
-              href="/admin"
-              className="text-muted text-xs hover:text-primary"
+    <main className="min-h-screen px-4 py-6 animate-fade-in bg-gray-50 text-gray-900">
+      <div className="flex items-center gap-3 mb-4 px-2">
+        <Link href="/admin" className="text-gray-500 text-xl">←</Link>
+        <h1 className="text-xl font-bold text-gray-900">Users</h1>
+      </div>
+
+      <form onSubmit={onSearch} className="mb-4 px-2 flex gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name or phone"
+          className="input-light flex-1"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold text-sm"
+        >
+          Search
+        </button>
+      </form>
+
+      {loading ? (
+        <div className="text-center text-gray-500 py-8">Loading…</div>
+      ) : users.length === 0 ? (
+        <div className="text-center text-gray-500 py-8">No users found.</div>
+      ) : (
+        <div className="space-y-2">
+          {users.map((u) => (
+            <button
+              key={u.id}
+              onClick={() => setSelected(u)}
+              className="bg-white border border-gray-200 rounded-2xl p-4 w-full text-left active:scale-[0.99] transition shadow-sm"
             >
-              ← Dashboard
-            </Link>
-            <h1 className="text-lg font-bold text-foreground leading-tight">
-              Users
-            </h1>
-          </div>
-          <button
-            onClick={() => load(true)}
-            disabled={refreshing}
-            className="p-2 rounded-full text-muted hover:text-primary transition active:scale-95"
-            aria-label="Refresh"
-          >
-            <RefreshIcon className={refreshing ? 'animate-spin-slow' : ''} />
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto w-full px-5 py-5 pb-16">
-        <form onSubmit={handleSearchSubmit} className="mb-5">
-          <div className="relative">
-            <input
-              type="text"
-              className="input pr-24"
-              placeholder="Search by name or phone"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-              {search && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="px-3 py-2 rounded-full text-muted text-xs"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                type="submit"
-                className="px-3 py-2 rounded-full bg-primary text-[#FFFFFF] text-xs font-semibold"
-              >
-                Search
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin-slow" />
-          </div>
-        ) : users.length === 0 ? (
-          <div className="card text-center py-12">
-            <p className="text-muted text-sm">
-              {search ? 'No users match your search.' : 'No users yet.'}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {users.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => setSelectedUserId(u.id)}
-                className="card text-left transition active:scale-[0.98]"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-semibold text-sm truncate">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-900 truncate">
                       {u.name}
-                    </p>
-                    <p className="text-muted text-xs mt-0.5">{u.phone}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
+                    </span>
                     {u.is_banned && (
-                      <span className="pill-danger">BANNED</span>
-                    )}
-                    {u.is_bound && !u.is_banned && (
-                      <span className="pill-success">BOUND</span>
+                      <span className="text-[9px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">
+                        BANNED
+                      </span>
                     )}
                   </div>
+                  <div className="text-xs text-gray-500 mt-0.5">{u.phone}</div>
+                  <div className="text-[10px] text-gray-500 mt-2">
+                    Balance:{' '}
+                    <span className="text-gray-900 font-semibold">
+                      UGX {Number(u.balance).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-gray-500 mt-1">
+                    Valid invites: {u.valid_invites} · Active rentals: {u.active_rentals}
+                  </div>
                 </div>
-                <div className="row">
-                  <span className="row-label">Balance</span>
-                  <span className="row-value text-primary">
-                    {u.balance.toLocaleString()} UGX
-                  </span>
-                </div>
-                <div className="row">
-                  <span className="row-label">Active Modules</span>
-                  <span className="row-value">{u.active_modules}</span>
-                </div>
-                <div className="row">
-                  <span className="row-label">Joined</span>
-                  <span className="row-value text-xs">
-                    {formatDate(u.created_at)}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </main>
+                <div className="text-gray-400">→</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {selectedUserId && (
+      {selected && !showGrantPicker && (
         <UserDetailModal
-          userId={selectedUserId}
-          products={products}
-          onClose={() => setSelectedUserId(null)}
-          onAction={() => load(true)}
+          user={selected}
+          onClose={() => setSelected(null)}
+          onRefresh={() => {
+            setSelected(null);
+            loadUsers(query);
+          }}
+          onOpenGrantPicker={() => setShowGrantPicker(true)}
         />
       )}
-    </div>
+
+      {selected && showGrantPicker && (
+        <GrantRobotPicker
+          user={selected}
+          products={products}
+          onClose={() => setShowGrantPicker(false)}
+          onGranted={() => {
+            setShowGrantPicker(false);
+            setSelected(null);
+            loadUsers(query);
+          }}
+        />
+      )}
+    </main>
   );
 }
 
 function UserDetailModal({
-  userId,
-  products,
+  user,
   onClose,
-  onAction,
+  onRefresh,
+  onOpenGrantPicker,
 }: {
-  userId: string;
-  products: ProductOption[];
+  user: AdminUser;
   onClose: () => void;
-  onAction: () => void;
+  onRefresh: () => void;
+  onOpenGrantPicker: () => void;
 }) {
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -321,7 +269,7 @@ function UserDetailModal({
   async function loadDetail() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}?t=` + Date.now(), {
+      const res = await fetch(`/api/admin/users/${user.id}?t=` + Date.now(), {
         cache: 'no-store',
       });
       const data = await res.json();
@@ -342,25 +290,21 @@ function UserDetailModal({
 
   useEffect(() => {
     loadDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [user.id]);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div className="w-full max-w-md bg-white rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">User Details</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <h3 className="text-lg font-bold text-gray-900">User Details</h3>
+          <button onClick={onClose} className="text-gray-500 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
         {loading || !detail ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin-slow" />
+            <div className="w-8 h-8 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
           </div>
         ) : (
           <>
@@ -371,8 +315,8 @@ function UserDetailModal({
                   onClick={() => setActiveTab(t)}
                   className={`py-2 rounded-full text-xs font-semibold transition ${
                     activeTab === t
-                      ? 'bg-primary text-[#FFFFFF]'
-                      : 'bg-card border border-border text-muted'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 border border-gray-200 text-gray-600'
                   }`}
                 >
                   {t === 'info' ? 'Info' : t === 'modules' ? 'Modules' : 'History'}
@@ -386,7 +330,7 @@ function UserDetailModal({
                 products={products}
                 onAction={() => {
                   loadDetail();
-                  onAction();
+                  onRefresh();
                 }}
               />
             )}
@@ -464,25 +408,25 @@ function InfoTab({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <SmallStat label="Balance" value={`UGX ${Number(user.balance).toLocaleString()}`} />
+        <SmallStat label="Total Referrals" value={String(user.total_referrals || 0)} /> {/* 👈 New Stat */}
+        <SmallStat label="Active Referrals" value={String(user.active_referrals || 0)} /> {/* 👈 New Stat */}
+        <SmallStat label="Active Modules" value={String(detail.modules.filter(m => m.status === 'active').length)} />
+      </div>
+
       <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-1">Balance</p>
-        <p className="text-foreground font-bold text-2xl">
-          {user.balance.toLocaleString()} UGX
-        </p>
+        <p className="text-muted text-xs uppercase mb-1">Adjust Balance</p>
         <button
           onClick={() => setShowAdjust(true)}
-          className="mt-3 w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+          className="mt-1 w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
         >
           Adjust Balance
         </button>
       </div>
 
-      {/* Reset Password */}
       <div className="card-flat mb-3">
         <p className="text-muted text-xs uppercase mb-2">Security</p>
-        <p className="text-muted text-xs mb-3">
-          Set a new password for this user. They can log in with it immediately.
-        </p>
         <button
           onClick={() => setShowResetPassword(true)}
           className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
@@ -493,9 +437,6 @@ function InfoTab({
 
       <div className="card-flat mb-3">
         <p className="text-muted text-xs uppercase mb-2">Grant Module (Free)</p>
-        <p className="text-muted text-xs mb-3">
-          Give this user a module for free. No commission, no balance deduction.
-        </p>
         <button
           onClick={() => setShowGrant(true)}
           className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
@@ -697,6 +638,17 @@ function TransactionsTab({
           <p className="text-muted text-xs">{formatDateTime(t.created_at)}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function SmallStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl p-3 bg-gray-50 border border-gray-200">
+      <div className="text-[9px] text-gray-500 font-semibold mb-1">
+        {label.toUpperCase()}
+      </div>
+      <div className="text-xs font-bold text-gray-900">{value}</div>
     </div>
   );
 }
@@ -1102,4 +1054,4 @@ function ConfirmModal({
       </div>
     </div>
   );
-}
+                    }
