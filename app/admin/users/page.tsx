@@ -43,8 +43,8 @@ interface UserDetail {
     bound_full_name: string | null;
     is_banned: boolean;
     created_at: string;
-    total_referrals: number; // 👈 Added
-    active_referrals: number; // 👈 Added
+    total_referrals: number;
+    active_referrals: number;
   };
   modules: Array<{
     id: string;
@@ -410,8 +410,8 @@ function InfoTab({
 
       <div className="grid grid-cols-2 gap-2 mb-4">
         <SmallStat label="Balance" value={`UGX ${Number(user.balance).toLocaleString()}`} />
-        <SmallStat label="Total Referrals" value={String(user.total_referrals || 0)} /> {/* 👈 New Stat */}
-        <SmallStat label="Active Referrals" value={String(user.active_referrals || 0)} /> {/* 👈 New Stat */}
+        <SmallStat label="Total Referrals" value={String(user.total_referrals || 0)} />
+        <SmallStat label="Active Referrals" value={String(user.active_referrals || 0)} />
         <SmallStat label="Active Modules" value={String(detail.modules.filter(m => m.status === 'active').length)} />
       </div>
 
@@ -1054,4 +1054,104 @@ function ConfirmModal({
       </div>
     </div>
   );
-                    }
+}
+
+// ==========================================
+// GRANT ROBOT PICKER (Missing Component)
+// ==========================================
+function GrantRobotPicker({
+  user,
+  products,
+  onClose,
+  onGranted,
+}: {
+  user: AdminUser;
+  products: ProductOption[];
+  onClose: () => void;
+  onGranted: () => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
+
+  async function grant(productId: string, productName: string) {
+    setBusyId(productId);
+    setMsg('');
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}?t=` + Date.now(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'grant_module', productId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data.error || 'Failed to grant');
+        setBusyId(null);
+      } else {
+        setMsg(`✓ Granted ${productName}`);
+        setTimeout(onGranted, 700);
+      }
+    } catch {
+      setMsg('Something went wrong');
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <div className="text-lg font-bold text-gray-900">Select Module</div>
+            <div className="text-xs text-gray-500">Grant to {user.name}</div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 text-xl">×</button>
+        </div>
+
+        {products.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">Loading modules…</div>
+        ) : (
+          <div className="space-y-2">
+            {products
+              .filter((p) => p.is_active)
+              .map((p) => (
+                <button
+                  key={p.id}
+                  disabled={busyId !== null}
+                  onClick={() => grant(p.id, p.name)}
+                  className="bg-white border border-gray-200 rounded-2xl p-3 w-full text-left flex items-center gap-3 active:scale-[0.99] transition disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <span className="text-2xl">📦</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900 truncate">
+                      {p.name}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      Worth UGX {Number(p.price).toLocaleString()} · +
+                      {Number(p.daily_return).toLocaleString()}/day · {p.cycle_days}d
+                    </div>
+                  </div>
+                  <div className="text-gray-400 text-sm">
+                    {busyId === p.id ? '…' : '→'}
+                  </div>
+                </button>
+              ))}
+          </div>
+        )}
+
+        {msg && (
+          <div className="text-sm text-center text-gray-900 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 mt-3">
+            {msg}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+    }
