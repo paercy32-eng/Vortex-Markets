@@ -3,74 +3,58 @@ import { getCurrentUser } from '@/lib/auth';
 import { getServiceClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
-const MIN_WITHDRAWAL = 4000;
+const MIN_WITHDRAWAL = 5000;
 const WITHDRAWAL_FEE_RATE = 0.15;
 
-// ==========================================
-// POST /api/withdraw
-// Creates a withdrawal request AND immediately
-// deducts the amount from the user's balance.
-// If admin rejects, the amount is refunded.
-// ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    if (!user.is_bound || !user.bound_phone || !user.bound_full_name) {
-      return NextResponse.json(
-        { error: 'Please bind your account first' },
-        { status: 400 }
-      );
-    }
+    const { amount } = await req.json();
+    const numAmount = Number(amount);
 
-    const body = await req.json();
-    const amount = Number(body?.amount);
-
-    if (!amount || isNaN(amount) || amount <= 0) {
+    if (!numAmount || numAmount < MIN_WITHDRAWAL) {
       return NextResponse.json(
-        { error: 'Enter a valid amount' },
-        { status: 400 }
-      );
-    }
-
-    if (amount < MIN_WITHDRAWAL) {
-      return NextResponse.json(
-        { error: `Minimum withdrawal is ${MIN_WITHDRAWAL.toLocaleString()} UGX` },
+        { error: `Minimum withdrawal is UGX ${MIN_WITHDRAWAL.toLocaleString()}` },
         { status: 400 }
       );
     }
 
     const supabase = getServiceClient();
 
-    // --- Must have at least one active module ---
-    const { data: activeModule } = await supabase
-      .from('user_modules')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .limit(1)
-      .maybeSingle();
+    // 1. Fetch fresh user data (balance, bound status, ban status)
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('balance, is_bound, bound_phone, bound_full_name, is_banned')
+      .eq('id', user.id)
+      .single();
 
-    if (!activeModule) {
+    if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (dbUser.is_banned) return NextResponse.json({ error: 'Account suspended' }, { status: 403 });
+    if (!dbUser.is_bound) return NextResponse.json({ error: 'Please bind your mobile money account first' }, { status: 400 });
+
+    const currentBalance = Number(dbUser.balance) || 0;
+    if (currentBalance < numAmount) {
+      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
+    }
+
+    // 2. 👈 CHECK FOR ACTIVE MODULE (Bought or Granted)
+    const { count: activeModules } = await supabase
+      .from('user_modules')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'active');
+
+    if (!activeModules || activeModules === 0) {
       return NextResponse.json(
-        {
-          error:
-            'You need an active module before you can withdraw. Purchase a module first.',
-        },
+        { error: 'You need at least one active investment (module) to withdraw. Please buy a module or contact support.' },
         { status: 400 }
       );
     }
 
-    // --- Block if user already has a pending withdrawal ---
+    // 3. Check for existing pending withdrawal (Prevent double requests)
     const { data: existingPending } = await supabase
       .from('withdrawals')
       .select('id')
@@ -80,106 +64,63 @@ export async function POST(req: NextRequest) {
 
     if (existingPending) {
       return NextResponse.json(
-        { error: 'You already have a pending withdrawal request' },
+        { error: 'You already have a pending withdrawal request. Please wait for it to be processed.' },
         { status: 400 }
       );
     }
 
-    // --- Re-fetch fresh balance ---
-    const { data: freshUser } = await supabase
-      .from('users')
-      .select('balance')
-      .eq('id', user.id)
-      .single();
-
-    const currentBalance = Number(freshUser?.balance) || 0;
-
-    if (amount > currentBalance) {
-      return NextResponse.json(
-        { error: 'Insufficient balance' },
-        { status: 400 }
-      );
-    }
-
-    // ==========================================
-    // DEDUCT balance immediately
-    // ==========================================
-    const newBalance = currentBalance - amount;
-
+    // 4. Deduct balance (Hold the funds)
+    const newBalance = currentBalance - numAmount;
     const { error: balErr } = await supabase
       .from('users')
       .update({ balance: newBalance })
       .eq('id', user.id);
 
     if (balErr) {
-      console.error('Balance deduct error:', balErr);
-      return NextResponse.json(
-        { error: 'Could not process withdrawal' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Could not process request' }, { status: 500 });
     }
 
-    // ==========================================
-    // Create withdrawal record
-    // ==========================================
-    const { data: withdrawal, error } = await supabase
+    // 5. Create the withdrawal request
+    const { data: withdrawal, error: wdErr } = await supabase
       .from('withdrawals')
       .insert({
         user_id: user.id,
-        amount,
-        recipient_phone: user.bound_phone,
-        recipient_name: user.bound_full_name,
+        amount: numAmount,
         status: 'pending',
+        phone: dbUser.bound_phone,
+        full_name: dbUser.bound_full_name,
       })
-      .select(
-        'id, amount, recipient_phone, recipient_name, status, created_at'
-      )
+      .select('id, amount, status, created_at')
       .single();
 
-    if (error || !withdrawal) {
-      // Rollback balance
-      await supabase
-        .from('users')
-        .update({ balance: currentBalance })
-        .eq('id', user.id);
-
-      console.error('Withdraw insert error:', error);
-      return NextResponse.json(
-        { error: 'Could not create withdrawal request' },
-        { status: 500 }
-      );
+    if (wdErr || !withdrawal) {
+      // Refund balance if insert fails
+      await supabase.from('users').update({ balance: currentBalance }).eq('id', user.id);
+      return NextResponse.json({ error: 'Failed to submit request' }, { status: 500 });
     }
 
-    // ==========================================
-    // Log transaction (deduction)
-    // ==========================================
+    // 6. Log the pending transaction
     await supabase.from('transactions').insert({
       user_id: user.id,
-      type: 'withdrawal_requested',
-      amount: -amount,
-      status: 'completed',
+      type: 'withdrawal_request',
+      amount: -numAmount,
+      status: 'pending',
       meta: {
         withdrawal_id: withdrawal.id,
-        recipient_name: withdrawal.recipient_name,
-        recipient_phone: withdrawal.recipient_phone,
-        note: 'Deducted on submit. Will be refunded if rejected.',
+        phone: dbUser.bound_phone,
+        full_name: dbUser.bound_full_name,
+        net_amount: Math.round(numAmount * (1 - WITHDRAWAL_FEE_RATE)),
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Withdrawal submitted. Awaiting admin approval.',
-      withdrawal: {
-        ...withdrawal,
-        amount: Number(withdrawal.amount) || 0,
-      },
-      newBalance,
+      message: 'Withdrawal request submitted successfully.',
+      withdrawalId: withdrawal.id,
     });
+
   } catch (err: any) {
-    console.error('Withdraw endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    console.error('Withdrawal error:', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
