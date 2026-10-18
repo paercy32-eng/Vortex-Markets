@@ -1,5 +1,5 @@
 // Vortex Markets Service Worker
-const CACHE_NAME = 'vortex-v1';
+const CACHE_NAME = 'vortex-v2';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
