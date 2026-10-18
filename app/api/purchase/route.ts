@@ -6,37 +6,22 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// REFERRAL COMMISSION RATES
-// ==========================================
 const REFERRAL_RATES: Record<number, number> = {
   1: 0.25, // Level 1: 25%
   2: 0.03, // Level 2: 3%
   3: 0.01, // Level 3: 1%
 };
 
-// ==========================================
-// POST /api/purchase
-// ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     const body = await req.json();
     const { productId } = body || {};
 
     if (!productId || typeof productId !== 'string') {
-      return NextResponse.json(
-        { error: 'Product ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
     const supabase = getServiceClient();
@@ -48,16 +33,40 @@ export async function POST(req: NextRequest) {
       .eq('id', productId)
       .maybeSingle();
 
-    if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
-    }
+    if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
 
     const price = Number(product.price) || 0;
 
-    // --- Re-fetch user's balance ---
+    // --- 1. Check if this is the user's FIRST purchase ---
+    const { count: previousPurchases } = await supabase
+      .from('user_modules')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    const isFirstPurchase = (previousPurchases ?? 0) === 0;
+
+    // --- 2. Enforce the First Purchase Rule (Must be funded by deposit) ---
+    if (isFirstPurchase) {
+      const { data: deposits } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('status', 'completed');
+
+      const totalDeposited = (deposits || []).reduce(
+        (sum, d) => sum + Number(d.amount),
+        0
+      );
+
+      if (totalDeposited < price) {
+        return NextResponse.json(
+          { error: 'Your first investment must be fully funded by an approved deposit. Please recharge first.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // --- 3. Check Balance ---
     const { data: freshUser } = await supabase
       .from('users')
       .select('balance')
@@ -67,45 +76,27 @@ export async function POST(req: NextRequest) {
     const currentBalance = Number(freshUser?.balance) || 0;
 
     if (currentBalance < price) {
-      return NextResponse.json(
-        { error: 'Insufficient balance. Please recharge first.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Insufficient balance. Please recharge first.' }, { status: 400 });
     }
 
-    // --- Check if this is the user's FIRST purchase ---
-    const { count: previousPurchases } = await supabase
-      .from('user_modules')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id);
-
-    const isFirstPurchase = (previousPurchases ?? 0) === 0;
-
-    // --- Deduct balance ---
+    // --- 4. Deduct balance ---
     const newBalance = currentBalance - price;
-
     const { error: balErr } = await supabase
       .from('users')
       .update({ balance: newBalance })
       .eq('id', user.id);
 
     if (balErr) {
-      console.error('Balance update error:', balErr);
-      return NextResponse.json(
-        { error: 'Could not process payment' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Could not process payment' }, { status: 500 });
     }
 
-    // --- Compute module timing ---
+    // --- 5. Compute module timing ---
     const startedAt = new Date();
-    const expiresAt = new Date(
-      startedAt.getTime() + product.cycle_days * 24 * 60 * 60 * 1000
-    );
+    const expiresAt = new Date(startedAt.getTime() + product.cycle_days * 24 * 60 * 60 * 1000);
     const dailyReturnNum = Number(product.daily_return) || 0;
     const totalCreditable = dailyReturnNum * product.cycle_days;
 
-    // --- Create user_module ---
+    // --- 6. Create user_module ---
     const { data: userModule, error: umErr } = await supabase
       .from('user_modules')
       .insert({
@@ -120,51 +111,25 @@ export async function POST(req: NextRequest) {
         expires_at: expiresAt.toISOString(),
         status: 'active',
       })
-      .select(
-        'id, product_name, price_paid, cycle_days, daily_return, total_creditable, started_at, expires_at, status'
-      )
+      .select('id, product_name, price_paid, cycle_days, daily_return, total_creditable, started_at, expires_at, status')
       .single();
 
     if (umErr || !userModule) {
       // Rollback balance
-      await supabase
-        .from('users')
-        .update({ balance: currentBalance })
-        .eq('id', user.id);
-
-      console.error('User module insert error:', umErr);
-      return NextResponse.json(
-        { error: 'Could not create module. Please try again.' },
-        { status: 500 }
-      );
+      await supabase.from('users').update({ balance: currentBalance }).eq('id', user.id);
+      return NextResponse.json({ error: 'Could not create module. Please try again.' }, { status: 500 });
     }
 
-    // --- Create order record ---
-    await supabase.from('orders').insert({
-      user_id: user.id,
-      product_id: product.id,
-      amount: price,
-      status: 'completed',
-    });
-
-    // --- Log the purchase transaction ---
+    // --- 7. Log the purchase transaction ---
     await supabase.from('transactions').insert({
       user_id: user.id,
       type: 'purchase',
       amount: -price,
       status: 'completed',
-      meta: {
-        product_id: product.id,
-        product_name: product.name,
-        user_module_id: userModule.id,
-      },
+      meta: { product_id: product.id, product_name: product.name, user_module_id: userModule.id },
     });
 
-    // ==========================================
-    // REFERRAL COMMISSIONS
-    // Only credited on the buyer's FIRST purchase.
-    // Walks up the tree using users.referred_by
-    // ==========================================
+    // --- 8. Process Referral Commissions (Only on first purchase) ---
     if (isFirstPurchase) {
       await creditReferralCommissions({
         supabase,
@@ -188,18 +153,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('Purchase endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
 
-// ==========================================
-// creditReferralCommissions
-// Walks up the tree (L1 → L2 → L3) and credits each
-// referrer at the appropriate rate.
-// ==========================================
 async function creditReferralCommissions({
   supabase,
   buyerId,
@@ -216,7 +173,6 @@ async function creditReferralCommissions({
   let currentUserId = buyerId;
 
   for (let level = 1; level <= 3; level++) {
-    // Find the referrer of currentUserId
     const { data: current } = await supabase
       .from('users')
       .select('referred_by')
@@ -224,7 +180,7 @@ async function creditReferralCommissions({
       .maybeSingle();
 
     const referrerId = current?.referred_by;
-    if (!referrerId) break; // no more ancestors
+    if (!referrerId) break;
 
     const rate = REFERRAL_RATES[level] || 0;
     if (rate <= 0) break;
@@ -232,7 +188,6 @@ async function creditReferralCommissions({
     const commission = Math.round(price * rate * 100) / 100;
     if (commission <= 0) break;
 
-    // --- Credit referrer's balance ---
     const { data: refUser } = await supabase
       .from('users')
       .select('balance')
@@ -247,7 +202,6 @@ async function creditReferralCommissions({
         .eq('id', referrerId);
     }
 
-    // --- Log a transaction for the referrer ---
     await supabase.from('transactions').insert({
       user_id: referrerId,
       type: 'referral_commission',
@@ -263,7 +217,6 @@ async function creditReferralCommissions({
       },
     });
 
-    // Move up the chain
     currentUserId = referrerId;
   }
 }
