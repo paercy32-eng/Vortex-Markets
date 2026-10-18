@@ -10,8 +10,6 @@ const pesajet = new PesaJet({
   webhookSecret: process.env.PESAJET_WEBHOOK_SECRET,
 });
 
-const MIN_DEPOSIT = 10000;
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -20,48 +18,60 @@ export async function POST(req: NextRequest) {
     const { amount, phone, provider } = await req.json();
     const numAmount = Number(amount);
 
-    if (!numAmount || numAmount < MIN_DEPOSIT) {
-      return NextResponse.json({ error: `Minimum deposit is UGX ${MIN_DEPOSIT.toLocaleString()}` }, { status: 400 });
-    }
     if (!phone || !provider) {
       return NextResponse.json({ error: 'Phone and provider (mtn/airtel) are required' }, { status: 400 });
     }
 
-    // Use official PesaJet utility to normalize the phone number to +256...
+    const supabase = getServiceClient();
+
+    // 👈 1. Fetch the minimum deposit from the database
+    const { data: setting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'min_deposit')
+      .maybeSingle();
+
+    const minDeposit = Number(setting?.value || 10000);
+
+    if (!numAmount || numAmount < minDeposit) {
+      return NextResponse.json({ error: `Minimum deposit is UGX ${minDeposit.toLocaleString()}` }, { status: 400 });
+    }
+
+    // Use official PesaJet utility for phone formatting
     const formattedPhone = pesajet.utils.formatPhoneNumber(phone);
 
+    // Gross-up fee calculation
     const feePct = Number(process.env.PESAJET_FEE_PERCENTAGE || 0.026);
     const feeFlat = Number(process.env.PESAJET_FEE_FLAT || 0);
     const totalCharge = Math.ceil((numAmount + feeFlat) / (1 - feePct));
 
-    const supabase = getServiceClient();
     const reference = `VRTX-DEP-${Date.now()}-${user.id.slice(0, 6)}`;
 
     // Save pending deposit using the 'payments' table
-const { data: deposit, error: insErr } = await supabase
-  .from('payments')
-  .insert({
-    user_id: user.id,
-    amount: numAmount,
-    status: 'pending',
-    reference,
-    type: 'deposit',             // 👈 Added
-    network: provider,           // 👈 Added ('mtn' or 'airtel')
-    sender_phone: formattedPhone // 👈 Added
-  })
-  .select('id, reference, amount, status')
-  .single();
+    const { data: deposit, error: insErr } = await supabase
+      .from('payments')
+      .insert({
+        user_id: user.id,
+        amount: numAmount,
+        status: 'pending',
+        reference,
+        type: 'deposit',
+        network: provider,
+        sender_phone: formattedPhone
+      })
+      .select('id, reference, amount, status')
+      .single();
 
     if (insErr || !deposit) {
-  console.error('Insert error:', insErr);
-  return NextResponse.json({ error: insErr?.message || 'Failed to create deposit' }, { status: 500 });
+      console.error('Insert error:', insErr);
+      return NextResponse.json({ error: insErr?.message || 'Failed to create deposit' }, { status: 500 });
     }
 
-    // Call PesaJet to trigger the PIN prompt
+    // Send prompt via PesaJet
     const payment = await pesajet.payments.create({
       amount: totalCharge,
       currency: 'UGX',
-      phoneNumber: formattedPhone, // 👈 Using the official formatter
+      phoneNumber: formattedPhone,
       provider: provider as 'mtn' | 'airtel',
       reference,
       description: `Vortex Markets deposit for ${user.name}`,
