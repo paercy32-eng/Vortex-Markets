@@ -236,7 +236,7 @@ export default function AdminUsersPage() {
       )}
 
       {selected && showGrantPicker && (
-        <GrantRobotPicker
+        <GrantModulePicker
           user={selected}
           products={products}
           onClose={() => setShowGrantPicker(false)}
@@ -1056,10 +1056,7 @@ function ConfirmModal({
   );
 }
 
-// ==========================================
-// GRANT ROBOT PICKER (Missing Component)
-// ==========================================
-function GrantRobotPicker({
+function GrantModulePicker({
   user,
   products,
   onClose,
@@ -1127,7 +1124,11 @@ function GrantRobotPicker({
                   className="bg-white border border-gray-200 rounded-2xl p-3 w-full text-left flex items-center gap-3 active:scale-[0.99] transition disabled:opacity-50"
                 >
                   <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <span className="text-2xl">📦</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 truncate">
@@ -1154,4 +1155,4 @@ function GrantRobotPicker({
       </div>
     </div>
   );
-    }
+}
