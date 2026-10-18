@@ -226,6 +226,7 @@ export default function AdminUsersPage() {
       {selected && !showGrantPicker && (
         <UserDetailModal
           user={selected}
+          products={products} // 👈 Passed products here
           onClose={() => setSelected(null)}
           onRefresh={() => {
             setSelected(null);
@@ -253,11 +254,13 @@ export default function AdminUsersPage() {
 
 function UserDetailModal({
   user,
+  products, // 👈 Received products here
   onClose,
   onRefresh,
   onOpenGrantPicker,
 }: {
   user: AdminUser;
+  products: ProductOption[]; // 👈 Type added
   onClose: () => void;
   onRefresh: () => void;
   onOpenGrantPicker: () => void;
@@ -327,7 +330,7 @@ function UserDetailModal({
             {activeTab === 'info' && (
               <InfoTab
                 detail={detail}
-                products={products}
+                products={products} // 👈 Passed to InfoTab
                 onAction={() => {
                   loadDetail();
                   onRefresh();
@@ -1155,4 +1158,4 @@ function GrantModulePicker({
       </div>
     </div>
   );
-}
+      }
