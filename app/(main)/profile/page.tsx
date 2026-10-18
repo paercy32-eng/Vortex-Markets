@@ -8,10 +8,10 @@ import { CloseIcon, ChevronRightIcon } from '@/components/icons';
 
 const MIN_WITHDRAWAL = 5000;
 const WITHDRAWAL_FEE_RATE = 0.15;
-const MIN_DEPOSIT = 500;
+const MIN_DEPOSIT = 10000;
 const PESAJET_FEE_PCT = 0.026;
 
-const TELEGRAM_LINK = 'https://t.me/+i4rSSZUHBu00NDMy';
+const TELEGRAM_LINK = 'https://t.me/+XXU8Ig4lhRQyY2U0';
 const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
 
 interface ProfileUser {
