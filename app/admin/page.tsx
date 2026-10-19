@@ -11,7 +11,7 @@ import { RefreshIcon, ChevronRightIcon } from '@/components/icons';
 // ==========================================
 interface Stats {
   totalUsers: number;
-  totalDeposited: number; // 👈 Matches the new API
+  totalDeposited: number;
   totalInvested: number;
   totalWithdrawn: number;
   pendingWithdrawals: number;
@@ -31,7 +31,6 @@ export default function AdminDashboardPage() {
     else setLoading(true);
 
     try {
-      // 👈 Fetching from the correct stats route
       const res = await fetch('/api/admin/stats?t=' + Date.now(), {
         cache: 'no-store',
       });
@@ -48,7 +47,6 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      // 👈 Setting the data directly (no 'stats' wrapper)
       setStats(data);
       setLoading(false);
       setRefreshing(false);
@@ -113,7 +111,7 @@ export default function AdminDashboardPage() {
               <StatCard label="Total Users" value={stats.totalUsers} />
               <StatCard
                 label="Total Deposits"
-                value={`${(stats.totalDeposited || 0).toLocaleString()} UGX`} // 👈 Fixed variable name
+                value={`${(stats.totalDeposited || 0).toLocaleString()} UGX`}
                 accent="primary"
               />
               <StatCard
@@ -123,7 +121,7 @@ export default function AdminDashboardPage() {
               />
               <StatCard
                 label="Total Withdrawn"
-                value={`${(stats.totalWithdrawn || 0).toLocaleString()} UGX`} // 👈 Now uses the completed withdrawals!
+                value={`${(stats.totalWithdrawn || 0).toLocaleString()} UGX`}
                 accent="danger"
               />
             </div>
@@ -211,4 +209,4 @@ function MenuLink({ href, label }: { href: string; label: string }) {
       <ChevronRightIcon size={18} className="text-muted" />
     </Link>
   );
-}
+            }
