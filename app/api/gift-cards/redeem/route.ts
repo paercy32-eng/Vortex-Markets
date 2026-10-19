@@ -3,170 +3,83 @@ import { getCurrentUser } from '@/lib/auth';
 import { getServiceClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
-// ==========================================
-// POST /api/gift-cards/redeem
-// Body: { code: string }
-//
-// Redeems the FULL remaining value of a gift card
-// and credits it to the user's balance.
-// - Card must exist, be active, not expired
-// - Card must have remaining value > 0
-// - User can only claim each card ONCE
-// ==========================================
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
+    const { code } = await req.json();
+    if (!code || typeof code !== 'string') {
+      return NextResponse.json({ error: 'Enter a valid gift code' }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { code: rawCode } = body || {};
-
-    if (!rawCode || typeof rawCode !== 'string') {
-      return NextResponse.json(
-        { error: 'Enter a gift card code' },
-        { status: 400 }
-      );
-    }
-
-    const code = rawCode.trim().toUpperCase();
-
+    const cleanCode = code.trim().toUpperCase();
     const supabase = getServiceClient();
 
-    // --- Find the gift card ---
-    const { data: card } = await supabase
+    // 1. Find the gift code in the database
+    const { data: giftCard } = await supabase
       .from('gift_cards')
-      .select(
-        'id, code, total_value, claimed_value, expires_at, is_active'
-      )
-      .eq('code', code)
+      .select('*')
+      .eq('code', cleanCode)
       .maybeSingle();
 
-    if (!card) {
-      return NextResponse.json(
-        { error: 'Invalid gift card code' },
-        { status: 404 }
-      );
+    if (!giftCard) {
+      return NextResponse.json({ error: 'Invalid gift code.' }, { status: 404 });
     }
 
-    // --- Active check ---
-    if (!card.is_active) {
-      return NextResponse.json(
-        { error: 'This gift card is no longer active' },
-        { status: 400 }
-      );
+    // 2. Check if it has already been used
+    if (giftCard.is_used) {
+      return NextResponse.json({ error: 'This gift code has already been used.' }, { status: 400 });
     }
 
-    // --- Expiry check ---
-    if (card.expires_at && new Date(card.expires_at) < new Date()) {
-      return NextResponse.json(
-        { error: 'This gift card has expired' },
-        { status: 400 }
-      );
+    // 3. Check if it has expired (5 minutes)
+    if (giftCard.expires_at && new Date(giftCard.expires_at) < new Date()) {
+      // Optionally mark it as used so it can't be tried again
+      await supabase.from('gift_cards').update({ is_used: true }).eq('id', giftCard.id);
+      return NextResponse.json({ error: 'This gift code has expired.' }, { status: 400 });
     }
 
-    const totalValue = Number(card.total_value) || 0;
-    const claimedValue = Number(card.claimed_value) || 0;
-    const remaining = totalValue - claimedValue;
+    // 4. Generate a random amount between 25 and 700
+    const randomAmount = Math.floor(Math.random() * (700 - 25 + 1)) + 25;
 
-    if (remaining <= 0) {
-      return NextResponse.json(
-        { error: 'This gift card has already been fully claimed' },
-        { status: 400 }
-      );
-    }
+    // 5. Mark the code as used
+    await supabase
+      .from('gift_cards')
+      .update({ is_used: true })
+      .eq('id', giftCard.id);
 
-    // --- Prevent double-claiming by the same user ---
-    // Check if this user has already redeemed this specific card
-    const { data: existingClaim } = await supabase
-      .from('transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('type', 'gift_redeemed')
-      .contains('meta', { gift_card_id: card.id })
-      .maybeSingle();
-
-    if (existingClaim) {
-      return NextResponse.json(
-        { error: 'You have already redeemed this gift card' },
-        { status: 400 }
-      );
-    }
-
-    // --- Credit balance ---
-    const { data: freshUser } = await supabase
+    // 6. Credit the user's balance
+    const { data: dbUser } = await supabase
       .from('users')
       .select('balance')
       .eq('id', user.id)
       .single();
 
-    const currentBalance = Number(freshUser?.balance) || 0;
-    const newBalance = currentBalance + remaining;
-
-    const { error: balErr } = await supabase
-      .from('users')
-      .update({ balance: newBalance })
-      .eq('id', user.id);
-
-    if (balErr) {
-      console.error('Gift card balance credit error:', balErr);
-      return NextResponse.json(
-        { error: 'Could not credit balance' },
-        { status: 500 }
-      );
-    }
-
-    // --- Mark card as fully claimed ---
-    const { error: cardErr } = await supabase
-      .from('gift_cards')
-      .update({ claimed_value: totalValue })
-      .eq('id', card.id);
-
-    if (cardErr) {
-      // Rollback balance
+    if (dbUser) {
       await supabase
         .from('users')
-        .update({ balance: currentBalance })
+        .update({ balance: Number(dbUser.balance) + randomAmount })
         .eq('id', user.id);
-
-      console.error('Gift card update error:', cardErr);
-      return NextResponse.json(
-        { error: 'Could not redeem gift card' },
-        { status: 500 }
-      );
     }
 
-    // --- Log the transaction ---
+    // 7. Log the transaction
     await supabase.from('transactions').insert({
       user_id: user.id,
-      type: 'gift_redeemed',
-      amount: remaining,
+      type: 'gift_card_win',
+      amount: randomAmount,
       status: 'completed',
-      meta: {
-        gift_card_id: card.id,
-        code: card.code,
-      },
+      meta: { code: cleanCode },
     });
 
     return NextResponse.json({
       success: true,
-      message: `You received ${remaining.toLocaleString()} UGX`,
-      amount: remaining,
-      newBalance,
+      amount: randomAmount,
+      message: `🎉 You won UGX ${randomAmount.toLocaleString()}!`,
     });
+
   } catch (err: any) {
     console.error('Gift card redeem error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
