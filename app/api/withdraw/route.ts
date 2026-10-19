@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceClient();
 
-    // 1. Fetch fresh user data (balance, bound status, ban status)
+    // 1. Fetch fresh user data
     const { data: dbUser } = await supabase
       .from('users')
       .select('balance, is_bound, bound_phone, bound_full_name, is_banned')
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
     }
 
-    // 2. 👈 CHECK FOR ACTIVE MODULE (Bought or Granted)
+    // 2. Check for active module
     const { count: activeModules } = await supabase
       .from('user_modules')
       .select('id', { count: 'exact', head: true })
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Check for existing pending withdrawal (Prevent double requests)
+    // 3. Check for existing pending withdrawal
     const { data: existingPending } = await supabase
       .from('withdrawals')
       .select('id')
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Deduct balance (Hold the funds)
+    // 4. Deduct balance
     const newBalance = currentBalance - numAmount;
     const { error: balErr } = await supabase
       .from('users')
@@ -80,15 +80,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not process request' }, { status: 500 });
     }
 
-    // 5. Create the withdrawal request
+    // 5. Create the withdrawal request (using recipient_phone and recipient_name)
     const { data: withdrawal, error: wdErr } = await supabase
       .from('withdrawals')
       .insert({
         user_id: user.id,
         amount: numAmount,
         status: 'pending',
-        phone: dbUser.bound_phone,
-        full_name: dbUser.bound_full_name,
+        recipient_phone: dbUser.bound_phone,    // 👈 Fixed column name
+        recipient_name: dbUser.bound_full_name, // 👈 Fixed column name
       })
       .select('id, amount, status, created_at')
       .single();
