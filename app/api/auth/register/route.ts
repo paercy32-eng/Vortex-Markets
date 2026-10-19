@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { signUserToken, USER_COOKIE_NAME, USER_COOKIE_OPTIONS } from '@/lib/jwt';
-import bcrypt from 'bcryptjs';
+import { hashPassword, signSession, SESSION_COOKIE } from '@/lib/auth';
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -10,14 +9,6 @@ function generateReferralCode(): string {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
-}
-
-// Normalize phone to consistent format: 256XXXXXXXXX (no plus)
-function normalizePhone(input: string): string {
-  let phone = (input || '').replace(/[^\d]/g, '');
-  if (phone.startsWith('0')) phone = '256' + phone.slice(1);
-  if (phone.startsWith('7') && phone.length === 9) phone = '256' + phone;
-  return phone;
 }
 
 export async function POST(req: NextRequest) {
@@ -43,14 +34,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
     }
 
-    // --- Normalize to consistent format ---
-    const normalizedPhone = normalizePhone(cleanPhone);
-
-    // --- Check if phone already exists (checking ALL possible formats) ---
+    // --- Check if phone already exists ---
     const { data: existing } = await supabaseAdmin
       .from('users')
       .select('id')
-      .or(`phone.eq.${normalizedPhone},phone.eq.0${normalizedPhone.slice(3)},phone.eq.+${normalizedPhone}`)
+      .eq('phone', cleanPhone)
       .maybeSingle();
 
     if (existing) {
@@ -69,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Hash password ---
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await hashPassword(password);
 
     // --- Generate unique referral code ---
     let newCode = generateReferralCode();
@@ -84,16 +72,19 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Auto-generate name ---
-    const defaultName = 'User ' + normalizedPhone.slice(-4);
+    const defaultName = 'User ' + cleanPhone.slice(-4);
 
-    // --- Insert user with NORMALIZED phone ---
+    // 👈 WELCOME BONUS AMOUNT
+    const WELCOME_BONUS = 3000;
+
+    // --- Insert user ---
     const { data: newUser, error: insertErr } = await supabaseAdmin
       .from('users')
       .insert({
         name: defaultName,
-        phone: normalizedPhone,
+        phone: cleanPhone,
         password_hash: passwordHash,
-        balance: 0,
+        balance: WELCOME_BONUS, // 👈 Set the starting balance
         referral_code: newCode,
         referred_by: referredBy,
       })
@@ -105,8 +96,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create account. Please try again.' }, { status: 500 });
     }
 
+    // 👈 Log the welcome bonus transaction
+    await supabaseAdmin.from('transactions').insert({
+      user_id: newUser.id,
+      type: 'welcome_bonus',
+      amount: WELCOME_BONUS,
+      status: 'completed',
+      meta: { reason: 'Welcome bonus for new account' },
+    });
+
     // --- Create session cookie ---
-    const token = signUserToken({
+    const token = await signSession({
       userId: newUser.id,
       phone: newUser.phone,
     });
@@ -121,7 +121,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
+    res.cookies.set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
 
     return res;
   } catch (err) {
