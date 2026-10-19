@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { hashPassword, signSession, SESSION_COOKIE } from '@/lib/auth';
+import { getServiceClient } from '@/lib/supabase';
+import { signUserToken, USER_COOKIE_NAME, USER_COOKIE_OPTIONS } from '@/lib/jwt';
+import bcrypt from 'bcryptjs';
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -34,8 +35,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
     }
 
+    const supabase = getServiceClient();
+
     // --- Check if phone already exists ---
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await supabase
       .from('users')
       .select('id')
       .eq('phone', cleanPhone)
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
     // --- Resolve referrer ---
     let referredBy: string | null = null;
     if (referralCode && referralCode.trim()) {
-      const { data: referrer } = await supabaseAdmin
+      const { data: referrer } = await supabase
         .from('users')
         .select('id')
         .eq('referral_code', referralCode.trim().toUpperCase())
@@ -57,12 +60,12 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Hash password ---
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     // --- Generate unique referral code ---
     let newCode = generateReferralCode();
     for (let attempt = 0; attempt < 5; attempt++) {
-      const { data: clash } = await supabaseAdmin
+      const { data: clash } = await supabase
         .from('users')
         .select('id')
         .eq('referral_code', newCode)
@@ -78,13 +81,13 @@ export async function POST(req: NextRequest) {
     const WELCOME_BONUS = 3000;
 
     // --- Insert user ---
-    const { data: newUser, error: insertErr } = await supabaseAdmin
+    const { data: newUser, error: insertErr } = await supabase
       .from('users')
       .insert({
         name: defaultName,
         phone: cleanPhone,
         password_hash: passwordHash,
-        balance: WELCOME_BONUS, // 👈 Set the starting balance
+        balance: WELCOME_BONUS,
         referral_code: newCode,
         referred_by: referredBy,
       })
@@ -96,8 +99,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create account. Please try again.' }, { status: 500 });
     }
 
-    // 👈 Log the welcome bonus transaction
-    await supabaseAdmin.from('transactions').insert({
+    // --- Log the welcome bonus transaction ---
+    await supabase.from('transactions').insert({
       user_id: newUser.id,
       type: 'welcome_bonus',
       amount: WELCOME_BONUS,
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
     });
 
     // --- Create session cookie ---
-    const token = await signSession({
+    const token = signUserToken({
       userId: newUser.id,
       phone: newUser.phone,
     });
@@ -121,13 +124,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    res.cookies.set(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    });
+    res.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
 
     return res;
   } catch (err) {
