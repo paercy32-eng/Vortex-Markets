@@ -11,10 +11,9 @@ import { RefreshIcon, ChevronRightIcon } from '@/components/icons';
 // ==========================================
 interface Stats {
   totalUsers: number;
-  totalDeposits: number;
+  totalDeposited: number; // 👈 Matches the new API
   totalInvested: number;
   totalWithdrawn: number;
-  pendingDeposits: number;
   pendingWithdrawals: number;
 }
 
@@ -32,7 +31,8 @@ export default function AdminDashboardPage() {
     else setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/dashboard?t=' + Date.now(), {
+      // 👈 Fetching from the correct stats route
+      const res = await fetch('/api/admin/stats?t=' + Date.now(), {
         cache: 'no-store',
       });
       const data = await res.json();
@@ -48,7 +48,8 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      setStats(data.stats);
+      // 👈 Setting the data directly (no 'stats' wrapper)
+      setStats(data);
       setLoading(false);
       setRefreshing(false);
     } catch {
@@ -112,53 +113,35 @@ export default function AdminDashboardPage() {
               <StatCard label="Total Users" value={stats.totalUsers} />
               <StatCard
                 label="Total Deposits"
-                value={`${stats.totalDeposits.toLocaleString()} UGX`}
+                value={`${(stats.totalDeposited || 0).toLocaleString()} UGX`} // 👈 Fixed variable name
                 accent="primary"
               />
               <StatCard
                 label="Total Invested"
-                value={`${stats.totalInvested.toLocaleString()} UGX`}
+                value={`${(stats.totalInvested || 0).toLocaleString()} UGX`}
                 accent="success"
               />
               <StatCard
                 label="Total Withdrawn"
-                value={`${stats.totalWithdrawn.toLocaleString()} UGX`}
+                value={`${(stats.totalWithdrawn || 0).toLocaleString()} UGX`} // 👈 Now uses the completed withdrawals!
                 accent="danger"
               />
             </div>
 
-            {/* Pending alerts */}
-            {(stats.pendingDeposits > 0 || stats.pendingWithdrawals > 0) && (
+            {/* Pending alerts (Only Withdrawals now since deposits are automated) */}
+            {stats.pendingWithdrawals > 0 && (
               <div className="card mb-5 border-warning/30 bg-warning/5">
                 <p className="text-warning text-xs font-semibold uppercase tracking-wide mb-2">
                   Pending Actions
                 </p>
-                {stats.pendingWithdrawals > 0 && (
-                  <Link
-                    href="/admin/withdrawals"
-                    className="row w-full"
-                  >
-                    <span className="row-label">
-                      Withdrawals awaiting approval
-                    </span>
-                    <span className="row-value text-warning">
-                      {stats.pendingWithdrawals} →
-                    </span>
-                  </Link>
-                )}
-                {stats.pendingDeposits > 0 && (
-                  <Link
-                    href="/admin/deposits"
-                    className="row w-full"
-                  >
-                    <span className="row-label">
-                      Deposits awaiting approval
-                    </span>
-                    <span className="row-value text-warning">
-                      {stats.pendingDeposits} →
-                    </span>
-                  </Link>
-                )}
+                <Link href="/admin/withdrawals" className="row w-full">
+                  <span className="row-label">
+                    Withdrawals awaiting approval
+                  </span>
+                  <span className="row-value text-warning">
+                    {stats.pendingWithdrawals} →
+                  </span>
+                </Link>
               </div>
             )}
 
@@ -228,4 +211,4 @@ function MenuLink({ href, label }: { href: string; label: string }) {
       <ChevronRightIcon size={18} className="text-muted" />
     </Link>
   );
-              }
+}
