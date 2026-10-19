@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (event === 'payment.failed' || event === 'payment.cancelled') {
       const { data: deposit } = await supabase
         .from('payments')
-        .select('id')
+        .select('id, status') // 👈 Fixed: Added 'status' to the select
         .eq('reference', reference)
         .maybeSingle();
 
