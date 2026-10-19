@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const signature = req.headers.get('x-webhook-signature') || '';
 
+    // 1. Verify Signature
     const isValid = pesajet.webhooks.verify(rawBody, signature);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getServiceClient();
 
-    // 1. Handle Successful Payments
+    // 2. Handle Successful Payments
     if (event === 'payment.completed') {
       const { data: deposit } = await supabase
         .from('payments')
@@ -32,40 +33,39 @@ export async function POST(req: NextRequest) {
         .eq('reference', reference)
         .maybeSingle();
 
-      if (!deposit) return NextResponse.json({ error: 'Deposit not found' }, { status: 404 });
-      
-      if (deposit.status === 'completed') {
-        return NextResponse.json({ success: true, message: 'Already processed' });
-      }
-
-      await supabase
-        .from('payments')
-        .update({ status: 'completed', reviewed_at: new Date().toISOString() })
-        .eq('id', deposit.id);
-
-      const { data: user } = await supabase
-        .from('users')
-        .select('balance')
-        .eq('id', deposit.user_id)
-        .single();
-
-      if (user) {
+      if (deposit && deposit.status !== 'completed') {
+        // Mark deposit as completed
         await supabase
-          .from('users')
-          .update({ balance: Number(user.balance) + Number(deposit.amount) })
-          .eq('id', deposit.user_id);
-      }
+          .from('payments')
+          .update({ status: 'completed', reviewed_at: new Date().toISOString() })
+          .eq('id', deposit.id);
 
-      await supabase.from('transactions').insert({
-        user_id: deposit.user_id,
-        type: 'deposit',
-        amount: Number(deposit.amount),
-        status: 'completed',
-        meta: { reference, transactionId, provider: body.provider },
-      });
+        // Get user and update balance
+        const { data: user } = await supabase
+          .from('users')
+          .select('balance')
+          .eq('id', deposit.user_id)
+          .single();
+
+        if (user) {
+          await supabase
+            .from('users')
+            .update({ balance: Number(user.balance) + Number(deposit.amount) })
+            .eq('id', deposit.user_id);
+        }
+
+        // Log transaction
+        await supabase.from('transactions').insert({
+          user_id: deposit.user_id,
+          type: 'deposit',
+          amount: Number(deposit.amount),
+          status: 'completed',
+          meta: { reference, transactionId, provider: body.provider },
+        });
+      }
     }
 
-    // 2. Handle Failed or Cancelled Payments
+    // 3. Handle Failed or Cancelled Payments
     if (event === 'payment.failed' || event === 'payment.cancelled') {
       const { data: deposit } = await supabase
         .from('payments')
@@ -73,8 +73,7 @@ export async function POST(req: NextRequest) {
         .eq('reference', reference)
         .maybeSingle();
 
-      if (deposit) {
-        // Mark as failed so it doesn't stay pending forever
+      if (deposit && deposit.status === 'pending') {
         await supabase
           .from('payments')
           .update({ status: 'failed', reviewed_at: new Date().toISOString() })
@@ -82,9 +81,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ALWAYS return 200 OK to PesaJet so they don't pause webhooks
     return NextResponse.json({ received: true });
+    
   } catch (err: any) {
     console.error('PesaJet webhook error:', err);
-    return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
+    // Even if there is a DB error, return 200 so PesaJet doesn't pause. 
+    // We will see the error in Vercel logs instead.
+    return NextResponse.json({ received: true, note: 'Processed with internal error' }, { status: 200 });
   }
 }
