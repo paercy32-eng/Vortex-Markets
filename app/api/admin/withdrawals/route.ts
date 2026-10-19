@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('withdrawals')
-      .select('id, user_id, amount, status, phone, full_name, created_at, reviewed_at, meta');
+      .select('id, user_id, amount, status, recipient_phone, recipient_name, created_at, reviewed_at');
 
     if (status === 'approved') {
       query = query.in('status', ['approved', 'completed']);
@@ -33,7 +33,10 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
+    if (error) {
+      console.error('Fetch withdrawals error:', error);
+      return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
+    }
 
     const userIds = Array.from(new Set((data ?? []).map((w) => w.user_id)));
     let userMap: Record<string, { name: string; phone: string }> = {};
@@ -63,20 +66,20 @@ export async function POST(req: NextRequest) {
     const supabase = getServiceClient();
     const { data: wd } = await supabase
       .from('withdrawals')
-      .select('id, user_id, amount, status, phone, full_name, meta')
+      .select('id, user_id, amount, status, recipient_phone, recipient_name')
       .eq('id', withdrawalId)
       .maybeSingle();
 
     if (!wd) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
 
-    // APPROVE → Send PesaJet & Mark COMPLETED
     if (action === 'approve') {
       if (wd.status !== 'pending') return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
 
       const { data: payer } = await supabase.from('users').select('phone, name').eq('id', wd.user_id).maybeSingle();
       
-      const payoutPhone = pesajet.utils.formatPhoneNumber(wd.phone || payer?.phone || '');
-      const payoutName = wd.full_name || payer?.name || 'User';
+      // 👈 Using recipient_phone and recipient_name from the database
+      const payoutPhone = pesajet.utils.formatPhoneNumber(wd.recipient_phone || payer?.phone || '');
+      const payoutName = wd.recipient_name || payer?.name || 'User';
       const userNet = Math.round(Number(wd.amount) * 0.85);
       const payoutRef = `VRTX-WD-${Date.now()}-${wd.id.slice(0,4)}`;
       const detectedProvider = pesajet.utils.detectProvider(payoutPhone) || 'mtn';
@@ -99,9 +102,8 @@ export async function POST(req: NextRequest) {
       await supabase
         .from('withdrawals')
         .update({
-          status: 'completed', // <-- Shows as Completed
+          status: 'completed',
           reviewed_at: new Date().toISOString(),
-          meta: { ...wd.meta, payout_ref: payoutRef, user_net: userNet },
         })
         .eq('id', withdrawalId);
 
@@ -119,19 +121,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, status: 'completed' });
     }
 
-    // REJECT → Refund & Mark REJECTED
     if (action === 'reject') {
       if (wd.status !== 'pending') return NextResponse.json({ error: `Already ${wd.status}` }, { status: 400 });
 
       const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).maybeSingle();
 
-      // Refund balance
       await supabase
         .from('users')
         .update({ balance: Number(user?.balance ?? 0) + Number(wd.amount) })
         .eq('id', wd.user_id);
 
-      // Mark as rejected
       await supabase
         .from('withdrawals')
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
