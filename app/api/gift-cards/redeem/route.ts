@@ -28,28 +28,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid gift code.' }, { status: 404 });
     }
 
-    // 2. Check if it has already been used
+    // 2. Check if it has already been fully used
     if (giftCard.is_used) {
-      return NextResponse.json({ error: 'This gift code has already been used.' }, { status: 400 });
+      return NextResponse.json({ error: 'This gift code has already been fully claimed.' }, { status: 400 });
     }
 
     // 3. Check if it has expired (5 minutes)
     if (giftCard.expires_at && new Date(giftCard.expires_at) < new Date()) {
-      // Optionally mark it as used so it can't be tried again
+      // Mark it as used so it can't be tried again
       await supabase.from('gift_cards').update({ is_used: true }).eq('id', giftCard.id);
       return NextResponse.json({ error: 'This gift code has expired.' }, { status: 400 });
     }
 
-    // 4. Generate a random amount between 25 and 700
-    const randomAmount = Math.floor(Math.random() * (700 - 25 + 1)) + 25;
+    // 4. Check if there is any balance left
+    const currentBalance = Number(giftCard.balance) || 0;
+    if (currentBalance <= 0) {
+      await supabase.from('gift_cards').update({ is_used: true }).eq('id', giftCard.id);
+      return NextResponse.json({ error: 'This gift code has been fully claimed.' }, { status: 400 });
+    }
 
-    // 5. Mark the code as used
+    // 5. Generate a random amount between 25 and 700
+    const minWin = 25;
+    const maxWin = 700;
+    let winAmount = Math.floor(Math.random() * (maxWin - minWin + 1)) + minWin;
+
+    // 6. Ensure the win doesn't exceed the remaining card balance
+    if (winAmount > currentBalance) {
+      winAmount = currentBalance;
+    }
+
+    // 7. Update the gift card balance
+    const newCardBalance = currentBalance - winAmount;
+    const isFullyClaimed = newCardBalance <= 0;
+
     await supabase
       .from('gift_cards')
-      .update({ is_used: true })
+      .update({ 
+        balance: newCardBalance,
+        is_used: isFullyClaimed 
+      })
       .eq('id', giftCard.id);
 
-    // 6. Credit the user's balance
+    // 8. Credit the user's balance
     const { data: dbUser } = await supabase
       .from('users')
       .select('balance')
@@ -59,23 +79,26 @@ export async function POST(req: NextRequest) {
     if (dbUser) {
       await supabase
         .from('users')
-        .update({ balance: Number(dbUser.balance) + randomAmount })
+        .update({ balance: Number(dbUser.balance) + winAmount })
         .eq('id', user.id);
     }
 
-    // 7. Log the transaction
+    // 9. Log the transaction
     await supabase.from('transactions').insert({
       user_id: user.id,
       type: 'gift_card_win',
-      amount: randomAmount,
+      amount: winAmount,
       status: 'completed',
-      meta: { code: cleanCode },
+      meta: { 
+        code: cleanCode, 
+        remaining_card_balance: newCardBalance 
+      },
     });
 
     return NextResponse.json({
       success: true,
-      amount: randomAmount,
-      message: `🎉 You won UGX ${randomAmount.toLocaleString()}!`,
+      amount: winAmount,
+      message: `🎉 You won UGX ${winAmount.toLocaleString()}!`,
     });
 
   } catch (err: any) {
