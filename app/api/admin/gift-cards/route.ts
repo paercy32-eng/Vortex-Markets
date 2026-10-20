@@ -34,8 +34,11 @@ export async function POST(req: NextRequest) {
       }
       codes.push({
         code,
-        value: numValue,
-        balance: numValue, // Starts with full value
+        total_value: numValue, // 👈 Old column
+        claimed_value: 0,      // 👈 Old column
+        is_active: true,       // 👈 Old column
+        value: numValue,       // 👈 New column
+        balance: numValue,     // 👈 New column
         expires_at: expiresAt,
         is_used: false,
       });
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Gift code generation error:', error);
-      return NextResponse.json({ error: 'Failed to generate codes' }, { status: 500 });
+      return NextResponse.json({ error: error.message || 'Failed to generate codes' }, { status: 500 });
     }
 
     return NextResponse.json({
