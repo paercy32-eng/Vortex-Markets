@@ -10,7 +10,7 @@ const MIN_WITHDRAWAL = 5000;
 const WITHDRAWAL_FEE_RATE = 0.15;
 const PESAJET_FEE_PCT = 0.026;
 
-const TELEGRAM_LINK = 'https://t.me/+XXU8Ig4lhRQyY2U0';
+const TELEGRAM_LINK = 'https://t.me/+kFanyiF47SA4ZjY8';
 const WHATSAPP_LINK = 'https://whatsapp.com/channel/0029Vb8p4NM90x2r2rzFGN3Y';
 
 interface ProfileUser {
