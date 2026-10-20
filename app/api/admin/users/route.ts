@@ -1,102 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentAdmin } from '@/lib/auth';
-import { getServiceClient } from '@/lib/supabase';
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// ==========================================
-// GET /api/admin/users?q=search
-// Returns all users, optionally filtered by name or phone.
-// Includes: balance, referral code, module count.
-// ==========================================
+import { NextRequest, NextResponse } from 'next/server';
+import { getServiceClient } from '@/lib/supabase';
+import { getCurrentAdmin } from '@/lib/auth';
+
 export async function GET(req: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
-
-    if (!admin) {
-      return NextResponse.json(
-        { error: 'Not authenticated as admin' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
-    const search = (searchParams.get('q') || '').trim();
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const supabase = getServiceClient();
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get('q') || '';
 
+    // 1. Fetch Users
     let query = supabase
       .from('users')
-      .select(
-        'id, name, phone, balance, referral_code, referred_by, is_bound, bound_phone, bound_full_name, created_at'
-      )
-      .order('created_at', { ascending: false })
-      .limit(200);
+      .select('id, name, phone, balance, is_banned, referral_code, created_at')
+      .order('created_at', { ascending: false });
 
-    if (search) {
-      // Match name or phone (case-insensitive)
-      query = query.or(
-        `name.ilike.%${search}%,phone.ilike.%${search}%`
-      );
+    if (q) {
+      query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
     }
 
     const { data: users, error } = await query;
+    if (error) return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
 
-    if (error) {
-      console.error('Admin users fetch error:', error);
-      return NextResponse.json(
-        { error: 'Could not fetch users' },
-        { status: 500 }
-      );
-    }
+    // 2. Fetch all active modules to count them
+    const { data: activeModules } = await supabase
+      .from('user_modules')
+      .select('user_id')
+      .eq('status', 'active');
 
-    const rows = users || [];
+    // 3. Fetch all users referred_by to count invites
+    const { data: referrals } = await supabase
+      .from('users')
+      .select('referred_by')
+      .not('referred_by', 'is', null);
 
-    // --- Count active modules per user ---
-    const userIds = rows.map((u) => u.id);
+    // 4. Map the stats to each user
+    const enriched = (users || []).map((u) => {
+      const activeRentals = (activeModules || []).filter((m) => m.user_id === u.id).length;
+      const validInvites = (referrals || []).filter((r) => r.referred_by === u.id).length;
 
-    let moduleCounts: Record<string, number> = {};
-
-    if (userIds.length > 0) {
-      const { data: modules } = await supabase
-        .from('user_modules')
-        .select('user_id, status')
-        .in('user_id', userIds)
-        .eq('status', 'active');
-
-      if (modules) {
-        moduleCounts = modules.reduce((acc, m) => {
-          acc[m.user_id] = (acc[m.user_id] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-      }
-    }
-
-    const result = rows.map((u) => ({
-      id: u.id,
-      name: u.name,
-      phone: u.phone,
-      balance: Number(u.balance) || 0,
-      referral_code: u.referral_code,
-      referred_by: u.referred_by,
-      is_bound: u.is_bound,
-      bound_phone: u.bound_phone,
-      bound_full_name: u.bound_full_name,
-      active_modules: moduleCounts[u.id] || 0,
-      created_at: u.created_at,
-    }));
-
-    return NextResponse.json({
-      success: true,
-      users: result,
+      return {
+        ...u,
+        balance: Number(u.balance) || 0,
+        valid_invites: validInvites,
+        active_rentals: activeRentals,
+      };
     });
-  } catch (err: any) {
-    console.error('Admin users endpoint error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ users: enriched });
+  } catch (err) {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
