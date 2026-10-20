@@ -171,11 +171,11 @@ export default function AdminUsersPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or phone"
-          className="input-light flex-1"
+          className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 transition shadow-sm"
         />
         <button
           type="submit"
-          className="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold text-sm"
+          className="px-4 py-2.5 rounded-xl bg-gray-900 text-white font-semibold text-sm active:scale-[0.98] transition shadow-sm"
         >
           Search
         </button>
@@ -191,7 +191,7 @@ export default function AdminUsersPage() {
             <button
               key={u.id}
               onClick={() => setSelected(u)}
-              className="bg-white border border-gray-200 rounded-2xl p-4 w-full text-left active:scale-[0.99] transition shadow-sm"
+              className="bg-white border border-gray-200 rounded-2xl p-4 w-full text-left active:scale-[0.99] transition shadow-sm hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -226,7 +226,7 @@ export default function AdminUsersPage() {
       {selected && !showGrantPicker && (
         <UserDetailModal
           user={selected}
-          products={products} // 👈 Passed products here
+          products={products}
           onClose={() => setSelected(null)}
           onRefresh={() => {
             setSelected(null);
@@ -254,13 +254,13 @@ export default function AdminUsersPage() {
 
 function UserDetailModal({
   user,
-  products, // 👈 Received products here
+  products,
   onClose,
   onRefresh,
   onOpenGrantPicker,
 }: {
   user: AdminUser;
-  products: ProductOption[]; // 👈 Type added
+  products: ProductOption[];
   onClose: () => void;
   onRefresh: () => void;
   onOpenGrantPicker: () => void;
@@ -330,7 +330,7 @@ function UserDetailModal({
             {activeTab === 'info' && (
               <InfoTab
                 detail={detail}
-                products={products} // 👈 Passed to InfoTab
+                products={products}
                 onAction={() => {
                   loadDetail();
                   onRefresh();
@@ -393,21 +393,21 @@ function InfoTab({
 
   return (
     <div>
-      <div className="card-flat mb-3">
+      <div className="card-flat mb-3 bg-gray-50 border border-gray-200 rounded-2xl p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <p className="text-foreground font-semibold truncate">
+            <p className="text-gray-900 font-bold truncate">
               {user.name}
             </p>
-            <p className="text-muted text-xs mt-1">{user.phone}</p>
-            <p className="text-muted text-xs mt-1">
-              Code: <span className="text-primary">{user.referral_code}</span>
+            <p className="text-gray-500 text-xs mt-1">{user.phone}</p>
+            <p className="text-gray-500 text-xs mt-1">
+              Code: <span className="text-red-500 font-bold">{user.referral_code}</span>
             </p>
-            <p className="text-muted text-xs mt-1">
+            <p className="text-gray-500 text-xs mt-1">
               Joined: {formatDate(user.created_at)}
             </p>
           </div>
-          {user.is_banned && <span className="pill-danger">BANNED</span>}
+          {user.is_banned && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-full font-bold">BANNED</span>}
         </div>
       </div>
 
@@ -418,68 +418,68 @@ function InfoTab({
         <SmallStat label="Active Modules" value={String(detail.modules.filter(m => m.status === 'active').length)} />
       </div>
 
-      <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-1">Adjust Balance</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3 shadow-sm">
+        <p className="text-gray-500 text-xs uppercase font-bold mb-2">Adjust Balance</p>
         <button
           onClick={() => setShowAdjust(true)}
-          className="mt-1 w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+          className="w-full py-3 rounded-xl bg-gray-100 text-gray-900 font-semibold active:scale-95 transition hover:bg-gray-200"
         >
           Adjust Balance
         </button>
       </div>
 
-      <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-2">Security</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3 shadow-sm">
+        <p className="text-gray-500 text-xs uppercase font-bold mb-2">Security</p>
         <button
           onClick={() => setShowResetPassword(true)}
-          className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+          className="w-full py-3 rounded-xl bg-gray-100 text-gray-900 font-semibold active:scale-95 transition hover:bg-gray-200"
         >
           Reset Password
         </button>
       </div>
 
-      <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-2">Grant Module (Free)</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3 shadow-sm">
+        <p className="text-gray-500 text-xs uppercase font-bold mb-2">Grant Module (Free)</p>
         <button
           onClick={() => setShowGrant(true)}
-          className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold active:scale-95 transition"
+          className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold active:scale-95 transition"
         >
           Grant a Module
         </button>
       </div>
 
-      <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-2">Bound Account</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3 shadow-sm">
+        <p className="text-gray-500 text-xs uppercase font-bold mb-2">Bound Account</p>
         {user.is_bound ? (
           <>
-            <p className="text-foreground text-sm">{user.bound_full_name}</p>
-            <p className="text-muted text-xs mt-1">{user.bound_phone}</p>
+            <p className="text-gray-900 text-sm font-semibold">{user.bound_full_name}</p>
+            <p className="text-gray-500 text-xs mt-1">{user.bound_phone}</p>
             <button
               onClick={() => setShowResetBind(true)}
-              className="mt-3 w-full py-2.5 rounded-full bg-warning/10 text-warning text-xs font-semibold active:scale-95 transition"
+              className="mt-3 w-full py-2.5 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 text-xs font-semibold active:scale-95 transition hover:bg-orange-100"
             >
               Reset Binding
             </button>
           </>
         ) : (
-          <p className="text-muted text-xs">Not bound yet.</p>
+          <p className="text-gray-500 text-xs">Not bound yet.</p>
         )}
       </div>
 
-      <div className="card-flat mb-3">
-        <p className="text-muted text-xs uppercase mb-2">Account Status</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3 shadow-sm">
+        <p className="text-gray-500 text-xs uppercase font-bold mb-2">Account Status</p>
         {user.is_banned ? (
           <button
             onClick={() => runAction('unban')}
             disabled={processing}
-            className="w-full py-3 rounded-full bg-success text-[#FFFFFF] text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-green-500 text-white text-sm font-semibold active:scale-95 transition disabled:opacity-50"
           >
             {processing ? '...' : 'Unban User'}
           </button>
         ) : (
           <button
             onClick={() => setShowBan(true)}
-            className="w-full py-3 rounded-full bg-danger/10 text-danger text-sm font-semibold active:scale-95 transition"
+            className="w-full py-3 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-semibold active:scale-95 transition hover:bg-red-100"
           >
             Ban User
           </button>
@@ -528,7 +528,7 @@ function InfoTab({
           title="Reset Binding?"
           message="This clears the user's bound phone and name so they can bind again."
           confirmLabel="Reset"
-          confirmClass="bg-warning text-[#FFFFFF]"
+          confirmClass="bg-orange-500 text-white"
           onConfirm={() => {
             setShowResetBind(false);
             runAction('reset_binding');
@@ -542,7 +542,7 @@ function InfoTab({
           title="Ban this user?"
           message="Banned users cannot log in or use the app. You can unban them later."
           confirmLabel="Ban"
-          confirmClass="bg-danger text-[#FFFFFF]"
+          confirmClass="bg-red-600 text-white"
           onConfirm={() => {
             setShowBan(false);
             runAction('ban');
@@ -558,7 +558,7 @@ function ModulesTab({ modules }: { modules: UserDetail['modules'] }) {
   if (modules.length === 0) {
     return (
       <div className="text-center py-10">
-        <p className="text-muted text-sm">No modules purchased.</p>
+        <p className="text-gray-500 text-sm">No modules purchased.</p>
       </div>
     );
   }
@@ -566,35 +566,35 @@ function ModulesTab({ modules }: { modules: UserDetail['modules'] }) {
   return (
     <div className="flex flex-col gap-2">
       {modules.map((m) => (
-        <div key={m.id} className="card-flat">
+        <div key={m.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <p className="text-foreground font-semibold text-sm flex-1 min-w-0">
+            <p className="text-gray-900 font-semibold text-sm flex-1 min-w-0">
               {m.product_name}
             </p>
             <span
-              className={
-                m.status === 'active' ? 'pill-success' : 'pill-muted'
-              }
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                m.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              }`}
             >
-              {m.status.toUpperCase()}
+              {m.status}
             </span>
           </div>
-          <div className="row">
-            <span className="row-label">Progress</span>
-            <span className="row-value text-xs">
+          <div className="flex justify-between py-1">
+            <span className="text-gray-500 text-xs">Progress</span>
+            <span className="text-gray-900 font-semibold text-xs">
               Day {m.days_credited}/{m.cycle_days}
             </span>
           </div>
-          <div className="row">
-            <span className="row-label">Earned</span>
-            <span className="row-value text-primary text-sm">
+          <div className="flex justify-between py-1">
+            <span className="text-gray-500 text-xs">Earned</span>
+            <span className="text-green-600 font-bold text-sm">
               {m.total_credited.toLocaleString()} /{' '}
               {m.total_creditable.toLocaleString()}
             </span>
           </div>
-          <div className="row">
-            <span className="row-label">Expires</span>
-            <span className="row-value text-xs">
+          <div className="flex justify-between py-1">
+            <span className="text-gray-500 text-xs">Expires</span>
+            <span className="text-gray-500 text-xs">
               {formatDate(m.expires_at)}
             </span>
           </div>
@@ -612,7 +612,7 @@ function TransactionsTab({
   if (transactions.length === 0) {
     return (
       <div className="text-center py-10">
-        <p className="text-muted text-sm">No transactions yet.</p>
+        <p className="text-gray-500 text-sm">No transactions yet.</p>
       </div>
     );
   }
@@ -620,25 +620,25 @@ function TransactionsTab({
   return (
     <div className="flex flex-col gap-2">
       {transactions.map((t) => (
-        <div key={t.id} className="card-flat">
+        <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="text-foreground font-medium text-sm">
+            <p className="text-gray-900 font-medium text-sm">
               {transactionLabel(t.type)}
             </p>
             <p
               className={`font-semibold text-sm ${
                 t.amount > 0
-                  ? 'text-success'
+                  ? 'text-green-600'
                   : t.amount < 0
-                  ? 'text-danger'
-                  : 'text-muted'
+                  ? 'text-red-600'
+                  : 'text-gray-500'
               }`}
             >
               {t.amount > 0 ? '+' : ''}
               {t.amount.toLocaleString()} UGX
             </p>
           </div>
-          <p className="text-muted text-xs">{formatDateTime(t.created_at)}</p>
+          <p className="text-gray-400 text-xs">{formatDateTime(t.created_at)}</p>
         </div>
       ))}
     </div>
@@ -648,8 +648,8 @@ function TransactionsTab({
 function SmallStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl p-3 bg-gray-50 border border-gray-200">
-      <div className="text-[9px] text-gray-500 font-semibold mb-1">
-        {label.toUpperCase()}
+      <div className="text-[9px] text-gray-500 font-semibold mb-1 uppercase tracking-wider">
+        {label}
       </div>
       <div className="text-xs font-bold text-gray-900">{value}</div>
     </div>
@@ -719,53 +719,46 @@ function AdjustBalanceModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Adjust Balance</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <h3 className="text-lg font-bold text-gray-900">Adjust Balance</h3>
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="card-flat mb-4">
-          <p className="text-muted text-xs uppercase mb-1">{userName}</p>
-          <p className="text-muted text-xs">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+          <p className="text-gray-500 text-xs uppercase mb-1">{userName}</p>
+          <p className="text-gray-500 text-xs">
             Current: {currentBalance.toLocaleString()} UGX
           </p>
         </div>
 
-        <label className="input-label">Amount (use - for deductions)</label>
+        <label className="block text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">Amount (use - for deductions)</label>
         <input
           type="number"
-          className="input mb-4"
+          className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 transition mb-4"
           placeholder="e.g. 5000 or -5000"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
 
         {numericAmount !== 0 && (
-          <div className="card-flat mb-4">
-            <div className="row">
-              <span className="row-label">New Balance</span>
-              <span
-                className={`row-value ${
-                  newBalance < 0 ? 'text-danger' : 'text-primary'
-                }`}
-              >
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+            <div className="flex justify-between">
+              <span className="text-gray-500 text-xs">New Balance</span>
+              <span className={`font-bold text-sm ${newBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {newBalance.toLocaleString()} UGX
               </span>
             </div>
           </div>
         )}
 
-        <label className="input-label">Reason</label>
+        <label className="block text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">Reason</label>
         <input
           type="text"
-          className="input mb-4"
+          className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 transition mb-4"
           placeholder="e.g. Bonus for loyalty"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
@@ -774,7 +767,7 @@ function AdjustBalanceModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Applying...' : 'Apply Adjustment'}
         </button>
@@ -834,28 +827,25 @@ function ResetPasswordModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Reset Password</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <h3 className="text-lg font-bold text-gray-900">Reset Password</h3>
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="card-flat mb-4">
-          <p className="text-muted text-xs uppercase mb-1">User</p>
-          <p className="text-foreground text-sm font-medium">{userName}</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+          <p className="text-gray-500 text-xs uppercase mb-1">User</p>
+          <p className="text-gray-900 text-sm font-medium">{userName}</p>
         </div>
 
-        <label className="input-label">New Password</label>
+        <label className="block text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">New Password</label>
         <div className="relative mb-4">
           <input
             type={show ? 'text' : 'password'}
-            className="input pr-16"
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 transition pr-12"
             placeholder="At least 6 characters"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -863,16 +853,16 @@ function ResetPasswordModal({
           <button
             type="button"
             onClick={() => setShow(!show)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs font-semibold"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold"
           >
             {show ? 'Hide' : 'Show'}
           </button>
         </div>
 
-        <label className="input-label">Confirm Password</label>
+        <label className="block text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">Confirm Password</label>
         <input
           type={show ? 'text' : 'password'}
-          className="input mb-4"
+          className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 transition mb-4"
           placeholder="Repeat password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
@@ -881,7 +871,7 @@ function ResetPasswordModal({
         <button
           onClick={submit}
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Resetting...' : 'Reset Password'}
         </button>
@@ -940,49 +930,45 @@ function GrantModuleModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="modal-title mb-0">Grant Module</h3>
-          <button onClick={onClose} className="text-muted p-1">
+          <h3 className="text-lg font-bold text-gray-900">Grant Module</h3>
+          <button onClick={onClose} className="text-gray-400 p-1">
             <CloseIcon size={20} />
           </button>
         </div>
 
-        <div className="modal-note mb-4">
-          This gives the user the selected module for free. No commission,
-          no balance deduction.
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 mb-4">
+          This gives the user the selected module for free. No commission, no balance deduction.
         </div>
 
-        <label className="input-label">Select Module</label>
-        <div className="max-h-64 overflow-y-auto mb-4">
+        <label className="block text-xs text-gray-500 font-bold mb-2 uppercase tracking-wide">Select Module</label>
+        <div className="max-h-64 overflow-y-auto mb-4 space-y-2">
           {products.map((p) => {
             const isSelected = selectedId === p.id;
             return (
               <button
                 key={p.id}
                 onClick={() => setSelectedId(p.id)}
-                className={`w-full text-left p-3 rounded-xl mb-2 border transition ${
+                className={`w-full text-left p-3 rounded-xl border transition ${
                   isSelected
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border bg-card'
+                    ? 'border-red-500 bg-red-50'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="text-foreground font-medium text-sm truncate">
+                    <p className={`font-semibold text-sm truncate ${isSelected ? 'text-red-700' : 'text-gray-900'}`}>
                       {p.name}
                     </p>
-                    <p className="text-muted text-xs mt-0.5">
+                    <p className="text-gray-500 text-xs mt-0.5">
                       {p.cycle_days} days · {p.daily_return.toLocaleString()}{' '}
                       UGX/day
                     </p>
                   </div>
                   {isSelected && (
-                    <span className="text-primary text-lg">✓</span>
+                    <span className="text-red-500 text-lg ml-2">✓</span>
                   )}
                 </div>
               </button>
@@ -991,14 +977,14 @@ function GrantModuleModal({
         </div>
 
         {selected && (
-          <div className="card-flat mb-4">
-            <div className="row">
-              <span className="row-label">Selected</span>
-              <span className="row-value text-sm">{selected.name}</span>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
+            <div className="flex justify-between py-1">
+              <span className="text-gray-500 text-xs">Selected</span>
+              <span className="text-gray-900 font-semibold text-xs">{selected.name}</span>
             </div>
-            <div className="row">
-              <span className="row-label">Value (free)</span>
-              <span className="row-value text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-gray-500 text-xs">Value (free)</span>
+              <span className="text-gray-900 font-semibold text-xs">
                 {selected.price.toLocaleString()} UGX
               </span>
             </div>
@@ -1008,7 +994,7 @@ function GrantModuleModal({
         <button
           onClick={submit}
           disabled={loading || !selectedId}
-          className="btn-primary w-full"
+          className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition disabled:opacity-50"
         >
           {loading ? 'Granting...' : 'Grant Module'}
         </button>
@@ -1033,23 +1019,20 @@ function ConfirmModal({
   onClose: () => void;
 }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="modal-title">{title}</h3>
-        <div className="modal-note mb-4">{message}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-500 mb-5">{message}</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onClose}
-            className="py-3 rounded-full bg-card border border-border text-foreground text-sm font-semibold"
+            className="py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm active:scale-95 transition"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`py-3 rounded-full text-sm font-semibold active:scale-95 transition ${confirmClass}`}
+            className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition ${confirmClass}`}
           >
             {confirmLabel}
           </button>
@@ -1097,14 +1080,8 @@ function GrantModulePicker({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div className="w-full max-w-md bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-start mb-4">
           <div>
             <div className="text-lg font-bold text-gray-900">Select Module</div>
@@ -1124,7 +1101,7 @@ function GrantModulePicker({
                   key={p.id}
                   disabled={busyId !== null}
                   onClick={() => grant(p.id, p.name)}
-                  className="bg-white border border-gray-200 rounded-2xl p-3 w-full text-left flex items-center gap-3 active:scale-[0.99] transition disabled:opacity-50"
+                  className="bg-white border border-gray-200 rounded-2xl p-3 w-full text-left flex items-center gap-3 active:scale-[0.99] transition disabled:opacity-50 hover:bg-gray-50"
                 >
                   <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
@@ -1158,4 +1135,4 @@ function GrantModulePicker({
       </div>
     </div>
   );
-      }
+          }
