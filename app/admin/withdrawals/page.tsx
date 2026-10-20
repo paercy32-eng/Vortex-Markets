@@ -11,8 +11,8 @@ type Withdrawal = {
   user_id: string;
   amount: number;
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'failed';
-  recipient_phone: string | null; // 👈 Updated column
-  recipient_name: string | null;  // 👈 Updated column
+  recipient_phone: string | null;
+  recipient_name: string | null;
   created_at: string;
   reviewed_at: string | null;
   users: { name: string; phone: string; balance: number } | null;
@@ -56,7 +56,7 @@ export default function AdminWithdrawalsPage() {
       if (!res.ok) {
         toast.error(data.error || 'Action failed');
       } else {
-        toast.success(action === 'approve' ? 'Payout sent!' : 'Request rejected & refunded.');
+        toast.success(action === 'approve' ? 'Payout sent via PesaJet!' : 'Request rejected & refunded.');
       }
     } catch {
       toast.error('Network error');
@@ -66,18 +66,10 @@ export default function AdminWithdrawalsPage() {
   }
 
   function statusBadge(w: Withdrawal) {
-    if (w.status === 'pending') {
-      return { label: 'PENDING', color: 'text-amber-700 bg-amber-100' };
-    }
-    if (w.status === 'rejected') {
-      return { label: 'REJECTED', color: 'text-red-600 bg-red-100' };
-    }
-    if (w.status === 'completed') {
-      return { label: 'COMPLETED', color: 'text-green-700 bg-green-100' };
-    }
-    if (w.status === 'failed') {
-      return { label: 'FAILED', color: 'text-red-600 bg-red-100' };
-    }
+    if (w.status === 'pending') return { label: 'PENDING', color: 'text-amber-700 bg-amber-100' };
+    if (w.status === 'rejected') return { label: 'REJECTED', color: 'text-red-600 bg-red-100' };
+    if (w.status === 'completed') return { label: 'COMPLETED', color: 'text-green-700 bg-green-100' };
+    if (w.status === 'failed') return { label: 'FAILED', color: 'text-red-600 bg-red-100' };
     return { label: 'APPROVED', color: 'text-blue-700 bg-blue-100' };
   }
 
@@ -95,7 +87,7 @@ export default function AdminWithdrawalsPage() {
             onClick={() => setFilter(f)}
             className={`py-2 rounded-xl text-[11px] font-semibold transition border capitalize ${
               filter === f
-                ? 'bg-gray-900 text-white border-gray-900'
+                ? 'bg-red-500 text-white border-red-500'
                 : 'bg-white text-gray-600 border-gray-200'
             }`}
           >
@@ -113,7 +105,6 @@ export default function AdminWithdrawalsPage() {
           {withdrawals.map((w) => {
             const badge = statusBadge(w);
             const net = Math.round(Number(w.amount) * 0.85);
-            const showMarkButtons = w.status === 'approved';
 
             return (
               <div key={w.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
@@ -123,10 +114,10 @@ export default function AdminWithdrawalsPage() {
                       {w.users?.name ?? 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      {w.recipient_phone ?? w.users?.phone} {/* 👈 Updated */}
+                      {w.recipient_phone ?? w.users?.phone}
                     </div>
                     <div className="text-[10px] text-gray-500 mt-1">
-                      Bound name: {w.recipient_name ?? '—'} {/* 👈 Updated */}
+                      Bound name: {w.recipient_name ?? '—'}
                     </div>
                     <div className="text-[10px] text-gray-500 mt-1">
                       Requested: {new Date(w.created_at).toLocaleString()}
@@ -139,27 +130,25 @@ export default function AdminWithdrawalsPage() {
                     <div className="text-lg font-bold text-gray-900">
                       UGX {Number(w.amount).toLocaleString()}
                     </div>
-                    <div
-                      className={`text-[10px] font-bold mt-1 uppercase px-2 py-0.5 rounded-full inline-block ${badge.color}`}
-                    >
+                    <div className={`text-[10px] font-bold mt-1 uppercase px-2 py-0.5 rounded-full inline-block ${badge.color}`}>
                       {badge.label}
                     </div>
                   </div>
                 </div>
 
                 {w.status === 'pending' && (
-                  <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="grid grid-cols-2 gap-2 mt-4">
                     <button
                       disabled={busyId === w.id}
                       onClick={() => act(w.id, 'approve')}
-                      className="bg-gray-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition"
+                      className="bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition shadow-sm"
                     >
-                      {busyId === w.id ? '...' : 'Approve & Send'}
+                      {busyId === w.id ? '...' : '✓ Approve & Send'}
                     </button>
                     <button
                       disabled={busyId === w.id}
                       onClick={() => act(w.id, 'reject')}
-                      className="bg-white border border-red-300 text-red-600 font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition"
+                      className="bg-white border border-red-300 text-red-600 font-bold py-2.5 rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition hover:bg-red-50"
                     >
                       Reject
                     </button>
@@ -172,4 +161,4 @@ export default function AdminWithdrawalsPage() {
       )}
     </main>
   );
-}
+                }
