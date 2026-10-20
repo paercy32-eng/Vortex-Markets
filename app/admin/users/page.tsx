@@ -175,7 +175,7 @@ export default function AdminUsersPage() {
         />
         <button
           type="submit"
-          className="px-4 py-2.5 rounded-xl bg-gray-900 text-white font-semibold text-sm active:scale-[0.98] transition shadow-sm"
+          className="px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm active:scale-[0.98] transition shadow-md"
         >
           Search
         </button>
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
                     </span>
                   </div>
                   <div className="text-[10px] text-gray-500 mt-1">
-                    Valid invites: {u.valid_invites} · Active rentals: {u.active_rentals}
+                    Valid invites: {u.valid_invites || 0} · Active rentals: {u.active_rentals || 0}
                   </div>
                 </div>
                 <div className="text-gray-400">→</div>
